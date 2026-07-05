@@ -19,8 +19,8 @@
 
 import type { Processor } from "@mastra/core/processors";
 import type { MastraDBMessage } from "@mastra/core/memory";
-import { INJECTION_PATTERNS, MULTILINGUAL_PATTERNS } from "./injectionPatterns";
-import { resetSessionLock } from "./policyEngine";
+import { INJECTION_PATTERNS, MULTILINGUAL_PATTERNS } from "./injectionPatterns.js";
+import { resetSessionLock } from "./policyEngine.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

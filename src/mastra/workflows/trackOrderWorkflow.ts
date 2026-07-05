@@ -10,8 +10,8 @@
  */
 import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { z } from "zod";
-import { getOrderLogic } from "../tools/getOrder";
-import { browseUrlTool } from "../tools/browseUrl";
+import { getOrderLogic } from "../tools/getOrder.js";
+import { browseUrlTool } from "../tools/browseUrl.js";
 
 // ── Step 1: Get order details ─────────────────────────────────────
 const getOrderDetailsStep = createStep({

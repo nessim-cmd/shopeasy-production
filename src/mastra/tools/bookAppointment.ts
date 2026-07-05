@@ -75,7 +75,7 @@ export async function bookAppointmentLogic(params: {
   }
 }
 
-import { enforcePolicy } from "../guardrails/policyEngine";
+import { enforcePolicy } from "../guardrails/policyEngine.js";
 
 export const bookAppointmentTool = createTool({
   id: "book-appointment",

@@ -1,9 +1,9 @@
 // src/mastra/tools/getAllOrders.ts
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import db from "../data/db";
+import db from "../data/db.js";
 
-import { enforcePolicy } from "../guardrails/policyEngine";
+import { enforcePolicy } from "../guardrails/policyEngine.js";
 
 interface Order {
   id: string;

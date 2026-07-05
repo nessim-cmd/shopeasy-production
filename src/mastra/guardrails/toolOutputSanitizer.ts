@@ -18,7 +18,7 @@
  *      to reinforce to the LLM that this is data, not instructions.
  */
 
-import { INJECTION_PATTERNS } from "./injectionPatterns";
+import { INJECTION_PATTERNS } from "./injectionPatterns.js";
 
 export function sanitizeExternalContent(rawContent: string): string {
   if (!rawContent) return rawContent;

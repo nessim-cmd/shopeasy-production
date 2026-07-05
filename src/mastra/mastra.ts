@@ -9,15 +9,18 @@ import path from "path";
 import { VercelDeployer } from "@mastra/deployer-vercel";
 import { PostgresStore } from "@mastra/pg";
 
-import { PROJECT_ROOT } from "./config/root";
-import { getBusinessDB } from "./data/db";
-import { supportAgent } from "./agents/supportAgent";
-import { dailyReportWorkflow } from "./workflows/dailyReportWorkflow";
-import { handleRefundWorkflow } from "./workflows/handleRefundWorkflow";
-import { escalateWorkflow } from "./workflows/escalateWorkflow";
-import { scheduleReturnWorkflow } from "./workflows/scheduleReturnWorkflow";
-import { trackOrderWorkflow } from "./workflows/trackOrderWorkflow";
-import { apiKeyMiddleware } from "./middleware";
+
+
+import { PROJECT_ROOT } from "./config/root.js";
+import { getBusinessDB } from "./data/db.js";
+import { supportAgent } from "./agents/supportAgent.js";
+import { dailyReportWorkflow } from "./workflows/dailyReportWorkflow.js";
+import { handleRefundWorkflow } from "./workflows/handleRefundWorkflow.js";
+import { escalateWorkflow } from "./workflows/escalateWorkflow.js";
+import { scheduleReturnWorkflow } from "./workflows/scheduleReturnWorkflow.js";
+import { trackOrderWorkflow } from "./workflows/trackOrderWorkflow.js";
+import { apiKeyMiddleware } from "./middleware.js";
+
 
 const customLogger = new PinoLogger({
   name: "ShopEasyAgent",

@@ -1,6 +1,6 @@
 // src/mastra/mcp/mcpClient.ts
 import { MCPClient } from "@mastra/mcp";
-import { PROJECT_ROOT } from "../config/root";
+import { PROJECT_ROOT } from "../config/root.js";
 
 console.log("[MCP] Project root:", PROJECT_ROOT);
 

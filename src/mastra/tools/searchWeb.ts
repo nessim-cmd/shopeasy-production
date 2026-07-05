@@ -3,7 +3,7 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
-import { sanitizeExternalContent } from "../guardrails/toolOutputSanitizer";
+import { sanitizeExternalContent } from "../guardrails/toolOutputSanitizer.js";
 
 export const searchWebTool = createTool({
   id: "search-web",

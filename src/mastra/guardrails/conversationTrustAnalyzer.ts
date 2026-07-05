@@ -13,12 +13,12 @@
 
 import type { Processor } from "@mastra/core/processors";
 import type { MastraDBMessage } from "@mastra/core/memory";
-import { getText, findInjection } from "./inputGuardrail";
+import { getText, findInjection } from "./inputGuardrail.js";
 import {
   ROLE_IMPERSONATION_PATTERNS,
   EXFILTRATION_PATTERNS,
   URGENCY_PATTERNS,
-} from "./injectionPatterns";
+} from "./injectionPatterns.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 // src/mastra/tools/getUserData.ts
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import db from "../data/db";
+import db from "../data/db.js";
 
 interface User {
   id: string;
@@ -26,7 +26,7 @@ function maskCard(card: string): string {
   return `**** **** **** ${last4}`;
 }
 
-import { enforcePolicy } from "../guardrails/policyEngine";
+import { enforcePolicy } from "../guardrails/policyEngine.js";
 
 export const getUserDataTool = createTool({
   id: "get-user-data",

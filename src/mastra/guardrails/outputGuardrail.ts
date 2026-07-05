@@ -29,7 +29,7 @@ import {
   REDACT_PATTERNS,
   BULK_DUMP_SIGNALS,
   SYSTEM_PROMPT_FINGERPRINTS,
-} from "./outputPatterns";
+} from "./outputPatterns.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

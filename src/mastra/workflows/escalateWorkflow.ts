@@ -9,8 +9,8 @@
  */
 import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { z } from "zod";
-import { createTicketLogic } from "../tools/createTicket";
-import { sendEmailLogic } from "../tools/sendEmail";
+import { createTicketLogic } from "../tools/createTicket.js";
+import { sendEmailLogic } from "../tools/sendEmail.js";
 
 // ── Step 1: Create high-priority ticket ──────────────────────────
 const createUrgentTicketStep = createStep({

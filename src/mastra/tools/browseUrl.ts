@@ -1,7 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { chromium, Browser, Page } from "playwright";
-import { sanitizeExternalContent } from "../guardrails/toolOutputSanitizer";
+import { sanitizeExternalContent } from "../guardrails/toolOutputSanitizer.js";
 
 // ── Shared logic — used by tool AND workflow steps ────────────────
 export async function browseUrlLogic(params: {

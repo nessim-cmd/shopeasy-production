@@ -16,7 +16,7 @@
  *   to fetch data it shouldn't access, the tool throws a hard error.
  */
 
-import db from "../data/db";
+import db from "../data/db.js";
 
 // ── Dynamic Session Lock ──────────────────────────────────────────────────────
 // Instead of a hardcoded mock, the session starts "unlocked".

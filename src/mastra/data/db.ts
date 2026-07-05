@@ -3,7 +3,7 @@
   import { Pool } from "pg";
   import path from "path";
   import { existsSync, mkdirSync } from "fs";
-  import { PROJECT_ROOT } from "../config/root";
+  import { PROJECT_ROOT } from "../config/root.js";
 
   // Determine database configuration
   const usePostgres = !!process.env.DATABASE_URL;

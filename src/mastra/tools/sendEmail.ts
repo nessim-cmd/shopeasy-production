@@ -26,7 +26,7 @@ export async function sendEmailLogic(
   }
 }
 
-import { enforcePolicy } from "../guardrails/policyEngine";
+import { enforcePolicy } from "../guardrails/policyEngine.js";
 
 export const sendEmailTool = createTool({
   id: "send-email",

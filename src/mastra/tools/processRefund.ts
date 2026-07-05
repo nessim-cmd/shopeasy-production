@@ -20,8 +20,8 @@ export async function processRefundLogic(
   };
 }
 
-import { enforcePolicy } from "../guardrails/policyEngine";
-import { getOrderLogic } from "./getOrder";
+import { enforcePolicy } from "../guardrails/policyEngine.js";
+import { getOrderLogic } from "./getOrder.js";
 
 export const processRefundTool = createTool({
   id: "process-refund",

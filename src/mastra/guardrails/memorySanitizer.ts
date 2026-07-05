@@ -19,8 +19,8 @@
 import type { Processor } from "@mastra/core/processors";
 import type { MastraDBMessage } from "@mastra/core/memory";
 import { embedV3 as embed } from "@mastra/core/vector";
-import { embedder } from "../config/embedder";
-import { getText } from "./inputGuardrail";
+import { embedder } from "../config/embedder.js";
+import { getText } from "./inputGuardrail.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

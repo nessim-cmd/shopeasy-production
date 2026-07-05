@@ -1,7 +1,7 @@
 // src/mastra/tools/getProduct.ts
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import db from "../data/db";
+import db from "../data/db.js";
 
 interface Product {
   id: string;

@@ -2,7 +2,7 @@
 // support_tickets est maintenant dans SQLite (shop_support.db)
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import db from "../data/db";
+import db from "../data/db.js";
 
 // ── Shared logic — used by tool AND workflow steps ────────────────
 export async function createTicketLogic(params: {

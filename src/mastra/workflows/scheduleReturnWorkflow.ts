@@ -11,10 +11,10 @@
  */
 import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { z } from "zod";
-import { getOrderLogic } from "../tools/getOrder";
-import { bookAppointmentLogic } from "../tools/bookAppointment";
-import { sendEmailLogic } from "../tools/sendEmail";
-import { createTicketLogic } from "../tools/createTicket";
+import { getOrderLogic } from "../tools/getOrder.js";
+import { bookAppointmentLogic } from "../tools/bookAppointment.js";
+import { sendEmailLogic } from "../tools/sendEmail.js";
+import { createTicketLogic } from "../tools/createTicket.js";
 
 // ── Step 1: Verify the order is eligible for return ──────────────
 const verifyReturnEligibilityStep = createStep({
