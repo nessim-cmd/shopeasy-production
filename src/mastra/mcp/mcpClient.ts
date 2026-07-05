@@ -2,17 +2,21 @@
 import { MCPClient } from "@mastra/mcp";
 import { PROJECT_ROOT } from "../config/root.js";
 
+const isServerless = !!process.env.VERCEL;
+
 console.log("[MCP] Project root:", PROJECT_ROOT);
 
 export const mcpClient = new MCPClient({
   id: "shop-mcp-client",
-  servers: {
-    filesystem: {
-      command: "npx",
-      args: ["-y", "@modelcontextprotocol/server-filesystem", PROJECT_ROOT],
-      env: { PROJECT_ROOT },
-    },
-  },
+  servers: isServerless
+    ? {}
+    : {
+        filesystem: {
+          command: "npx",
+          args: ["-y", "@modelcontextprotocol/server-filesystem", PROJECT_ROOT],
+          env: { PROJECT_ROOT },
+        },
+      },
   timeout: 30000,
 });
 
