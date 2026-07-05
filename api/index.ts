@@ -2,7 +2,7 @@
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
 import { MastraServer } from "@mastra/hono";
-import { mastra } from "../src/mastra/mastra";
+import { mastra } from "../src/mastra/mastra.js";
 
 export const config = { runtime: "nodejs" };
 
