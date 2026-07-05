@@ -29,3 +29,5 @@ node_modules/
 .mastra/
 .vercel/
 *.db
+.vercel
+.env*
