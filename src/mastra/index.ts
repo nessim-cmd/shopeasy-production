@@ -1,3 +1,13 @@
+process.on("uncaughtException", (err) => {
+  console.error("=== UNCAUGHT EXCEPTION ===");
+  console.error(err?.stack || err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("=== UNHANDLED REJECTION ===");
+  console.error(reason instanceof Error ? reason.stack : reason);
+});
+
 import "./config/patchEnv.js";
 import "dotenv/config";
 import { Mastra } from "@mastra/core/mastra";
