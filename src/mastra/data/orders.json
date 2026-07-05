@@ -1,0 +1,5 @@
+[
+  { "id": "ORD-001", "userId": "USR-001", "product": "iPhone 15 Pro", "status": "shipped", "total": 999, "trackingUrl": "https://tracking.example.com/abc123" },
+  { "id": "ORD-002", "userId": "USR-002", "product": "MacBook Pro M3", "status": "delivered", "total": 2499, "trackingUrl": "https://tracking.example.com/def456" },
+  { "id": "ORD-003", "userId": "USR-001", "product": "AirPods Pro", "status": "processing", "total": 249, "trackingUrl": null }
+]

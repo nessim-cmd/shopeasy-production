@@ -1,0 +1,25 @@
+@"
+# Secrets
+.env
+google-credentials.json
+google-token.json
+
+# Dependencies & build
+node_modules/
+dist/
+.mastra/
+
+# SQLite & DuckDB runtime files
+*.db
+*.db-shm
+*.db-wal
+*.duckdb
+*.duckdb.wal
+
+# Mastra runtime output
+src/mastra/public/
+
+# Temp files
+tree.txt
+tree_clean.txt
+"@ | Set-Content .gitignore

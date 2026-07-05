@@ -1,0 +1,86 @@
+services:
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: shop_ollama
+  #   restart: unless-stopped
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "ollama list || exit 1"]
+  #     interval: 10s
+  #     timeout: 10s
+  #     retries: 10
+  #     start_period: 30s
+
+  # ollama-init:
+  #   image: ollama/ollama:latest
+  #   container_name: shop_ollama_init
+  #   restart: "no"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #     - ./ollama-modelfile:/modelfile:ro
+  #   depends_on:
+  #     ollama:
+  #       condition: service_healthy
+  #   environment:
+  #     - OLLAMA_HOST=http://ollama:11434
+  #   entrypoint: >
+  #     sh -c "
+  #       ollama pull qwen3:8b &&
+  #       ollama create qwen3-24k -f /modelfile &&
+  #       echo '✅ Model qwen3-24k ready'
+  #     "
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: shop_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: shopuser
+      POSTGRES_PASSWORD: shoppassword
+      POSTGRES_DB: shopdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shopuser -d shopdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    image: adminer
+    container_name: shop_adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    depends_on:
+      - postgres
+
+  app:
+    build: .
+    container_name: shop_app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PROJECT_ROOT: /app
+      DATABASE_URL: ${DATABASE_URL}
+      PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /usr/bin/chromium
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+    command: >
+      sh -c "npm run seed:all && npm run dev"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  # ollama_data:
