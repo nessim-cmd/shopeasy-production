@@ -22,4 +22,10 @@ src/mastra/public/
 # Temp files
 tree.txt
 tree_clean.txt
-"@ | Set-Content .gitignore
+"@ | Set-Content .gitignoregoogle-token.json
+*.env
+.env.local
+node_modules/
+.mastra/
+.vercel/
+*.db

@@ -1,42 +1,36 @@
 // src/mastra/memory/memory.ts
 import "dotenv/config";
 import { Memory } from "@mastra/memory";
-import { PgVector } from "@mastra/pg";
-import { LibSQLStore } from "@mastra/libsql";
-import { MEMORY_DB_PATH } from "../data/db.js";
-import { embedder } from "../config/embedder.js"; // ← NEW: local fastembed model
+import { PgVector, PostgresStore } from "@mastra/pg";
+import { embedder } from "../config/embedder.js";
 
-// ── Vector store — pgvector running in Docker ─────────────────────
+// ── Vector store — pgvector on Neon ────────────────────────────────
 const vectorStore = new PgVector({
   id: "shop-memory-vector",
   connectionString: process.env.DATABASE_URL!,
 });
 
-// ── Memory storage — SQLite ──────────────────────────────────────
-const memoryStorage = new LibSQLStore({
+// ── Memory storage — Postgres (was SQLite, broke on Vercel) ───────
+const memoryStorage = new PostgresStore({
   id: "shop-memory-storage",
-  url: `file:${MEMORY_DB_PATH}`,
+  connectionString: process.env.DATABASE_URL!,
 });
 
 // ── Mastra Memory ────────────────────────────────────────────────
-// embedder is now provided → Mastra will:
-//   1. Create a vector index in PgVector on first use
-//   2. Embed every saved message turn with bge-small-en-v1.5
-//   3. Enable semanticRecall — past relevant conversations surface automatically
 export const agentMemory = new Memory({
   vector: vectorStore,
   storage: memoryStorage,
-  embedder, // ← NEW: was missing, causing silent fallback to recency-only
+  embedder,
   options: {
     lastMessages: 10,
     workingMemory: {
       enabled: true,
     },
     semanticRecall: {
-      topK: 3, // retrieve 3 most semantically similar past messages
+      topK: 3,
       messageRange: {
-        before: 2, // include 2 messages before each match for context
-        after: 1, // include 1 message after each match for context
+        before: 2,
+        after: 1,
       },
     },
   },
