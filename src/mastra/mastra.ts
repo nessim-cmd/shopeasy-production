@@ -1,5 +1,5 @@
 // src/mastra/mastra.ts
-import "./config/patchEnv";
+import "./config/patchEnv.js";
 import "dotenv/config";
 import { Mastra } from "@mastra/core/mastra";
 import { PinoLogger } from "@mastra/loggers";
