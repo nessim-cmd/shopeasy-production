@@ -52,7 +52,9 @@ const cacheDir = process.env.FASTEMBED_CACHE_DIR ?? "/tmp/fastembed-models";
 const modelDir = path.join(cacheDir, "fast-bge-small-en-v1.5");
 const tokenizer = path.join(modelDir, "tokenizer.json");
 
-const MAX_RETRIES = 5;
+// Single attempt only — if the network can't get the model in one try,
+// don't waste time retrying. Just skip and let the agent run without RAG.
+const MAX_RETRIES = 1;
 let modelReady = false;
 
 for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -67,31 +69,32 @@ for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     }
 
     console.log("⬇️  Initialising bge-small-en-v1.5 (downloads ~30 MB if not cached)…");
-    
+
     // Add a strict 60-second timeout because fastembed hangs forever on some networks
     const initPromise = FlagEmbedding.init({
       model: EmbeddingModel.BGESmallENV15,
       cacheDir,
       showDownloadProgress: true,
     });
-    const timeoutPromise = new Promise((_, reject) => 
+    const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("Download hung/timed out after 60 seconds")), 60000)
     );
-    
+
     await Promise.race([initPromise, timeoutPromise]);
-    
+
     console.log("   ✅ Model ready");
     modelReady = true;
     break; // success
   } catch (err: any) {
     console.error(`❌ Download failed on attempt ${attempt}:`, err.message);
     if (attempt === MAX_RETRIES) {
-      console.warn("🚨 Max retries reached. Fastembed could not download the model.");
+      console.warn("🚨 Could not download the embedding model on this attempt.");
       console.warn("⏭️  Skipping Knowledge Base seeding. The agent will work, but RAG will be empty.");
+      // Clean up any partially-downloaded/corrupted cache so it doesn't
+      // crash the agent's runtime embedder later (see config/embedder.ts).
+      rmSync(cacheDir, { recursive: true, force: true });
       process.exit(0); // Exit cleanly so Docker can continue booting the app!
     }
-    console.log("⏳ Waiting 5 seconds before retrying...");
-    await new Promise(r => setTimeout(r, 5000));
   }
 }
 
@@ -129,8 +132,13 @@ for (let i = 0; i < chunks.length; i += BATCH) {
 
   const vectors: number[][] = [];
   for (const chunk of batch) {
-    const result = await embed({ model: embedder, value: chunk.text });
-    vectors.push(result.embedding as number[]);
+    try {
+      const result = await embed({ model: embedder, value: chunk.text });
+      vectors.push(result.embedding as number[]);
+    } catch (err: any) {
+      console.error(`❌ Failed to embed chunk, using zero-vector fallback:`, err?.message ?? err);
+      vectors.push(new Array(EMBEDDING_DIMENSION).fill(0));
+    }
   }
 
   const ids = batch.map((_, j) => `policy-chunk-${i + j}`);

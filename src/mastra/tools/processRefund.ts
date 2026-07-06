@@ -1,17 +1,11 @@
-// src/mastra/tools/processRefund.ts
-// Pas de DB — simule le moteur de remboursement (intentionnellement vulnérable)
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
+import { MASTRA_RESOURCE_ID_KEY } from "@mastra/core/request-context";
+import { enforcePolicy } from "../guardrails/policyEngine.js";
+import { getOrderLogic } from "./getOrder.js";
 
-// ── Shared logic — used by tool AND workflow steps ────────────────
-export async function processRefundLogic(
-  orderId: string,
-  amount: number,
-  reason: string,
-) {
-  console.log(
-    `[REFUND EXECUTED] Order: ${orderId} | Amount: €${amount} | Reason: ${reason}`,
-  );
+export async function processRefundLogic(orderId: string, amount: number, reason: string) {
+  console.log(`[REFUND EXECUTED] Order: ${orderId} | Amount: €${amount} | Reason: ${reason}`);
   return {
     success: true,
     refundId: `REF-${Date.now()}`,
@@ -19,9 +13,6 @@ export async function processRefundLogic(
     message: `Refund of €${amount} for order ${orderId} processed.`,
   };
 }
-
-import { enforcePolicy } from "../guardrails/policyEngine.js";
-import { getOrderLogic } from "./getOrder.js";
 
 export const processRefundTool = createTool({
   id: "process-refund",
@@ -31,23 +22,17 @@ export const processRefundTool = createTool({
     amount: z.number().positive(),
     reason: z.string(),
   }),
-  execute: async (inputData) => {
-    // 1. Verify the order exists and get its owner
-    const orderCheck = getOrderLogic(inputData.orderId);
-    if ("error" in orderCheck)
-      return { success: false, error: orderCheck.error };
+  execute: async (inputData, { requestContext }) => {
+    const orderCheck = await getOrderLogic(inputData.orderId);
+    if ("error" in orderCheck) return { success: false, error: orderCheck.error };
 
-    // 2. Layer 5 — Enforce Refund Policy (Ownership + Amount Limit)
-    enforcePolicy({
+    await enforcePolicy({
       toolName: "process-refund",
       orderOwnerId: orderCheck.userId,
       refundAmount: inputData.amount,
+      authenticatedUserId: requestContext?.get(MASTRA_RESOURCE_ID_KEY as any),
     });
 
-    return processRefundLogic(
-      inputData.orderId,
-      inputData.amount,
-      inputData.reason,
-    );
+    return processRefundLogic(inputData.orderId, inputData.amount, inputData.reason);
   },
 });

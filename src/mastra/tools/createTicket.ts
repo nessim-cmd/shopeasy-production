@@ -1,5 +1,4 @@
 // src/mastra/tools/createTicket.ts
-// support_tickets est maintenant dans SQLite (shop_support.db)
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import db from "../data/db.js";
@@ -15,22 +14,15 @@ export async function createTicketLogic(params: {
   const { userId, orderId, subject, description, priority } = params;
   console.log("[createTicket] INPUT:", JSON.stringify(params));
   try {
-    const stmt = db.prepare(`
-      INSERT INTO support_tickets (user_id, order_id, subject, description, priority)
-      VALUES (@userId, @orderId, @subject, @description, @priority)
-    `);
-    const info = stmt.run({
-      userId,
-      orderId: orderId ?? null,
-      subject,
-      description,
-      priority: priority ?? "normal",
-    });
+    // Postgres has no lastInsertRowid/rowid — RETURNING gets the new row directly.
+    const rows = await db.query(
+      `INSERT INTO support_tickets (user_id, order_id, subject, description, priority)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, created_at`,
+      [userId, orderId ?? null, subject, description, priority ?? "normal"],
+    );
 
-    // Fetch the inserted row to get id and created_at
-    const row = db
-      .prepare("SELECT id, created_at FROM support_tickets WHERE rowid = ?")
-      .get(info.lastInsertRowid) as { id: number; created_at: string };
+    const row = rows[0] as { id: number; created_at: string };
 
     console.log("[createTicket] SUCCESS:", row.id);
     return { success: true, ticketId: row.id, createdAt: row.created_at };

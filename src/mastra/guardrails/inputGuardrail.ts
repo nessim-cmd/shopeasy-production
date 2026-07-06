@@ -20,7 +20,7 @@
 import type { Processor } from "@mastra/core/processors";
 import type { MastraDBMessage } from "@mastra/core/memory";
 import { INJECTION_PATTERNS, MULTILINGUAL_PATTERNS } from "./injectionPatterns.js";
-import { resetSessionLock } from "./policyEngine.js";
+
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -262,10 +262,6 @@ export class InputGuardrail implements Processor {
     const userMessages = messages.filter((m) => m.role === "user");
     const lastUserMsg = userMessages[userMessages.length - 1];
 
-    if (userMessages.length === 1) {
-      console.log("[InputGuardrail] 🆕 New conversation detected. Resetting session lock.");
-      resetSessionLock();
-    }
 
     if (!lastUserMsg) {
       console.log("[InputGuardrail] no user message found, skipping");

@@ -1,6 +1,5 @@
 FROM node:22-slim
 
-# Install dependencies required by node-gyp (for better-sqlite3) and Playwright
 RUN apt-get update && apt-get install -y \
     python3 make g++ chromium \
     && rm -rf /var/lib/apt/lists/*
@@ -12,13 +11,19 @@ WORKDIR /app
 
 COPY package.json package-lock.json .npmrc* ./
 
-# Configure npm for flaky networks (increase timeout to 10 mins and add retries)
 RUN npm config set fetch-retry-maxtimeout 600000 -g && \
     npm config set fetch-retries 5 -g && \
     npm install --prefer-offline || npm install
 
-
 COPY . .
 
-EXPOSE 3000
-CMD ["npm", "run", "dev"]
+ENV FASTEMBED_CACHE_DIR=/opt/fastembed-cache
+RUN npx tsx scripts/downloadEmbedModel.ts
+
+# Production build — mastra dev is a watch/rebuild dev server, not meant
+# for a deployed container.
+RUN npm run build
+
+EXPOSE 4111
+
+CMD ["npm", "run", "start"]

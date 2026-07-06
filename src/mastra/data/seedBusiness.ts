@@ -1,130 +1,143 @@
 // src/mastra/data/seedBusiness.ts
-// Reads JSON files and populates shop_business.db
+//
+// Seeds business tables (user_profiles, orders, support_tickets) in `neondb`,
+// the same database that hosts Neon Auth (`neon_auth` schema) and `products`.
+// Does NOT touch `products` — that table already exists with real data.
+//
 // Usage: npx tsx src/mastra/data/seedBusiness.ts
 
-import Database from "better-sqlite3";
+import "dotenv/config";
 import path from "path";
 import { fileURLToPath } from "url";
 import { readFileSync } from "fs";
-import { BUSINESS_DB_PATH } from "./db.js";
+import { Pool } from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DATA_DIR = __dirname;
 
-// Use the exported BUSINESS_DB_PATH
-const DB_PATH = BUSINESS_DB_PATH;
-const DATA_DIR = __dirname; // JSON files are in the same data/ folder
+const connectionString = process.env.STORE_DATABASE_URL;
 
-const db = new Database(DB_PATH);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+if (!connectionString) {
+  throw new Error("Missing STORE_DATABASE_URL — set it in your .env before seeding.");
+}
+
+const pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
 
 // ── Schema ────────────────────────────────────────────────────────
-db.exec(`
+// Real FK to neon_auth."user" is possible now that everything lives in one database.
+const SCHEMA_SQL = `
   DROP TABLE IF EXISTS support_tickets;
   DROP TABLE IF EXISTS orders;
-  DROP TABLE IF EXISTS products;
-  DROP TABLE IF EXISTS users;
+  DROP TABLE IF EXISTS user_profiles;
 
-  CREATE TABLE IF NOT EXISTS users (
-    id             TEXT PRIMARY KEY,
-    name           TEXT NOT NULL,
-    email          TEXT NOT NULL UNIQUE,
-    phone          TEXT,
-    address        TEXT,
-    creditCard     TEXT,
-    cvv            TEXT,
-    pin            TEXT,
-    accountBalance REAL DEFAULT 0.0
+  CREATE TABLE user_profiles (
+    user_id         UUID PRIMARY KEY REFERENCES neon_auth."user"(id),
+    phone           TEXT,
+    address         TEXT,
+    credit_card     TEXT,
+    cvv             TEXT,
+    pin             TEXT,
+    account_balance NUMERIC(12,2) DEFAULT 0.0
   );
 
-  CREATE TABLE IF NOT EXISTS products (
-    id          TEXT PRIMARY KEY,
-    name        TEXT NOT NULL,
-    price       REAL NOT NULL,
-    stock       INTEGER DEFAULT 0,
-    description TEXT,
-    image_url   TEXT
+  CREATE TABLE orders (
+    id           TEXT PRIMARY KEY,
+    user_id      UUID NOT NULL REFERENCES user_profiles(user_id),
+    product      TEXT NOT NULL,
+    status       TEXT NOT NULL CHECK (status IN ('processing','shipped','delivered','cancelled')),
+    total        NUMERIC(12,2) NOT NULL,
+    tracking_url TEXT
   );
 
-  CREATE TABLE IF NOT EXISTS orders (
-    id          TEXT PRIMARY KEY,
-    userId      TEXT NOT NULL,
-    product     TEXT NOT NULL,
-    status      TEXT NOT NULL CHECK(status IN ('processing','shipped','delivered','cancelled')),
-    total       REAL NOT NULL,
-    trackingUrl TEXT,
-    FOREIGN KEY (userId) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS support_tickets (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id     TEXT        NOT NULL,
+  CREATE TABLE support_tickets (
+    id          SERIAL PRIMARY KEY,
+    user_id     UUID NOT NULL REFERENCES user_profiles(user_id),
     order_id    TEXT,
-    subject     TEXT        NOT NULL,
-    description TEXT        NOT NULL,
-    priority    TEXT        DEFAULT 'normal' CHECK(priority IN ('low','normal','high')),
-    status      TEXT        DEFAULT 'open',
-    created_at  TEXT        DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    subject     TEXT NOT NULL,
+    description TEXT NOT NULL,
+    priority    TEXT DEFAULT 'normal' CHECK (priority IN ('low','normal','high')),
+    status      TEXT DEFAULT 'open',
+    created_at  TIMESTAMPTZ DEFAULT now()
   );
-`);
+`;
 
 // ── Helpers ───────────────────────────────────────────────────────
-function loadJson(filename: string): Record<string, unknown>[] {
+function loadJson<T = Record<string, unknown>>(filename: string): T[] {
   const raw = readFileSync(path.join(DATA_DIR, filename), "utf-8");
-  return JSON.parse(raw) as Record<string, unknown>[];
+  return JSON.parse(raw) as T[];
 }
 
-function seed(
-  table: string,
-  records: Record<string, unknown>[],
-  insertSql: string,
-) {
-  const stmt = db.prepare(insertSql);
-  const insert = db.transaction((rows: Record<string, unknown>[]) => {
-    for (const row of rows) stmt.run(row);
-  });
-  insert(records);
-  console.log(`✓ ${table.padEnd(16)} → ${records.length} lignes insérées`);
+async function seedUserProfiles(rows: Record<string, unknown>[]) {
+  for (const row of rows) {
+    await pool.query(
+      `INSERT INTO user_profiles
+         (user_id, phone, address, credit_card, cvv, pin, account_balance)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (user_id) DO UPDATE SET
+         phone = EXCLUDED.phone,
+         address = EXCLUDED.address,
+         credit_card = EXCLUDED.credit_card,
+         cvv = EXCLUDED.cvv,
+         pin = EXCLUDED.pin,
+         account_balance = EXCLUDED.account_balance`,
+      [
+        row.id, // must be a real neon_auth."user".id — Postgres will reject it otherwise
+        row.phone ?? null,
+        row.address ?? null,
+        row.creditCard ?? null,
+        row.cvv ?? null,
+        row.pin ?? null,
+        row.accountBalance ?? 0,
+      ],
+    );
+  }
+  console.log(`✓ user_profiles     → ${rows.length} lignes insérées`);
 }
 
-// ── Seed ──────────────────────────────────────────────────────────
-seed(
-  "users",
-  loadJson("users.json"),
-  `INSERT OR REPLACE INTO users
-     (id, name, email, phone, address, creditCard, cvv, pin, accountBalance)
-   VALUES
-     (:id, :name, :email, :phone, :address, :creditCard, :cvv, :pin, :accountBalance)`,
-);
-
-seed(
-  "products",
-  loadJson("products.json"),
-  `INSERT OR REPLACE INTO products (id, name, price, stock, description, image_url)
-   VALUES (:id, :name, :price, :stock, :description, :image_url)`,
-);
-
-seed(
-  "orders",
-  loadJson("orders.json"),
-  `INSERT OR REPLACE INTO orders (id, userId, product, status, total, trackingUrl)
-   VALUES (:id, :userId, :product, :status, :total, :trackingUrl)`,
-);
-
-// support_tickets starts empty — tickets are created at runtime via createTicketTool
-console.log(
-  `✓ ${"support_tickets".padEnd(16)} → table prête (vide au démarrage)`,
-);
-
-// ── Verification ──────────────────────────────────────────────────
-console.log("\n── Verification ──────────────────────────");
-for (const table of ["users", "products", "orders", "support_tickets"]) {
-  const row = db.prepare(`SELECT COUNT(*) as n FROM ${table}`).get() as {
-    n: number;
-  };
-  console.log(`   ${table.padEnd(16)}: ${row.n} lignes`);
+async function seedOrders(rows: Record<string, unknown>[]) {
+  for (const row of rows) {
+    await pool.query(
+      `INSERT INTO orders (id, user_id, product, status, total, tracking_url)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (id) DO UPDATE SET
+         user_id = EXCLUDED.user_id,
+         product = EXCLUDED.product,
+         status = EXCLUDED.status,
+         total = EXCLUDED.total,
+         tracking_url = EXCLUDED.tracking_url`,
+      [row.id, row.userId, row.product, row.status, row.total, row.trackingUrl ?? null],
+    );
+  }
+  console.log(`✓ orders            → ${rows.length} lignes insérées`);
 }
 
-console.log(`\n✅ Business SQLite prêt → ${DB_PATH}`);
-db.close();
+// ── Main ──────────────────────────────────────────────────────────
+async function main() {
+  console.log(`Seeding ${connectionString!.replace(/:[^:@]*@/, ":****@")}`);
+
+  const users = loadJson<{ id: string }>("users.json");
+  const orders = loadJson("orders.json");
+
+  await pool.query(SCHEMA_SQL);
+
+  // If a user id in users.json isn't a real neon_auth.user, Postgres rejects the
+  // insert with a foreign key violation — no separate validation step needed anymore.
+  await seedUserProfiles(users);
+  await seedOrders(orders);
+
+  console.log(`✓ support_tickets   → table prête (vide au démarrage)`);
+
+  console.log("\n── Verification ──────────────────────────");
+  for (const table of ["user_profiles", "orders", "support_tickets", "products"]) {
+    const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM ${table}`);
+    console.log(`   ${table.padEnd(16)}: ${rows[0].n} lignes`);
+  }
+
+  console.log(`\n✅ neondb seeded successfully`);
+  await pool.end();
+}
+
+main().catch((err) => {
+  console.error("❌ Seed failed:", err);
+  process.exit(1);
+});

@@ -1,14 +1,11 @@
 [
   {
-    "id": "USR-001", "name": "Alice Martin", "email": "alice@example.com",
-    "phone": "+33612345678", "address": "12 Rue de Paris, 75001",
-    "creditCard": "4111-1111-1111-1234", "cvv": "123", "pin": "4821",
+    "id": "3718eee4-9d65-442a-899c-ac4c4f813811",
+    "phone": "+216 20 123 456",
+    "address": "12 Rue de la Liberté, Tunis, Tunisia",
+    "creditCard": "4111-1111-1111-1111",
+    "cvv": "123",
+    "pin": "0000",
     "accountBalance": 250.00
-  },
-  {
-    "id": "USR-002", "name": "Bob Smith", "email": "bob@example.com",
-    "phone": "+33698765432", "address": "5 Avenue de Lyon, 69001",
-    "creditCard": "5500-0000-0000-0004", "cvv": "456", "pin": "9999",
-    "accountBalance": 75.50
   }
 ]

@@ -1,5 +1,18 @@
 [
-  { "id": "ORD-001", "userId": "USR-001", "product": "iPhone 15 Pro", "status": "shipped", "total": 999, "trackingUrl": "https://tracking.example.com/abc123" },
-  { "id": "ORD-002", "userId": "USR-002", "product": "MacBook Pro M3", "status": "delivered", "total": 2499, "trackingUrl": "https://tracking.example.com/def456" },
-  { "id": "ORD-003", "userId": "USR-001", "product": "AirPods Pro", "status": "processing", "total": 249, "trackingUrl": null }
+  {
+    "id": "ORD-1001",
+    "userId": "3718eee4-9d65-442a-899c-ac4c4f813811",
+    "product": "Aura Desk Lamp",
+    "status": "shipped",
+    "total": 59.00,
+    "trackingUrl": "https://example-carrier.test/track/ORD-1001"
+  },
+  {
+    "id": "ORD-1002",
+    "userId": "3718eee4-9d65-442a-899c-ac4c4f813811",
+    "product": "Type/01 Mechanical Keyboard",
+    "status": "processing",
+    "total": 149.00,
+    "trackingUrl": null
+  }
 ]

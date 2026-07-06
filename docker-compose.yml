@@ -1,38 +1,4 @@
 services:
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   container_name: shop_ollama
-  #   restart: unless-stopped
-  #   ports:
-  #     - "11434:11434"
-  #   volumes:
-  #     - ollama_data:/root/.ollama
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "ollama list || exit 1"]
-  #     interval: 10s
-  #     timeout: 10s
-  #     retries: 10
-  #     start_period: 30s
-
-  # ollama-init:
-  #   image: ollama/ollama:latest
-  #   container_name: shop_ollama_init
-  #   restart: "no"
-  #   volumes:
-  #     - ollama_data:/root/.ollama
-  #     - ./ollama-modelfile:/modelfile:ro
-  #   depends_on:
-  #     ollama:
-  #       condition: service_healthy
-  #   environment:
-  #     - OLLAMA_HOST=http://ollama:11434
-  #   entrypoint: >
-  #     sh -c "
-  #       ollama pull qwen3:8b &&
-  #       ollama create qwen3-24k -f /modelfile &&
-  #       echo '✅ Model qwen3-24k ready'
-  #     "
-
   postgres:
     image: pgvector/pgvector:pg16
     container_name: shop_postgres
@@ -70,10 +36,14 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /usr/bin/chromium
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      # Points at the model baked into the image during `docker build`
+      # (see Dockerfile) — NOT under /app, so the bind mount below never
+      # hides it. Runtime never touches the network for this model.
+      FASTEMBED_CACHE_DIR: /opt/fastembed-cache
     command: >
       sh -c "npm run seed:all && npm run dev"
     ports:
-      - "3000:3000"
+      - "4111:4111"
     volumes:
       - .:/app
       - /app/node_modules
@@ -83,4 +53,3 @@ services:
 
 volumes:
   pgdata:
-  # ollama_data:

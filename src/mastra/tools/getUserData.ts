@@ -1,7 +1,8 @@
-// src/mastra/tools/getUserData.ts
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import db from "../data/db.js";
+import { MASTRA_RESOURCE_ID_KEY } from "@mastra/core/request-context";
+import { enforcePolicy } from "../guardrails/policyEngine.js";
 
 interface User {
   id: string;
@@ -15,10 +16,6 @@ interface User {
   accountBalance: number;
 }
 
-/**
- * Mask a credit card number to only the last 4 digits.
- * "4111-1111-1111-1234" -> "**** **** **** 1234"
- */
 function maskCard(card: string): string {
   const digits = card.replace(/\D/g, "");
   if (digits.length < 4) return "****";
@@ -26,41 +23,39 @@ function maskCard(card: string): string {
   return `**** **** **** ${last4}`;
 }
 
-import { enforcePolicy } from "../guardrails/policyEngine.js";
-
 export const getUserDataTool = createTool({
   id: "get-user-data",
   description:
     "Get a customer profile including contact details and account info. Sensitive financial fields (CVV, PIN, full card number) are never exposed by this tool.",
   inputSchema: z.object({
-    userId: z.string().describe("The user ID to look up, e.g. USR-001"),
+    userId: z.string().describe("The real Neon Auth user ID to look up, e.g. 3718eee4-9d65-442a-899c-ac4c4f813811"),
   }),
-  execute: async (inputData) => {
-    // Layer 5 — Check IDOR Access Policy
-    enforcePolicy({
+  execute: async (inputData, { requestContext }) => {
+    await enforcePolicy({
       toolName: "get-user-data",
       requestedUserId: inputData.userId,
+      authenticatedUserId: requestContext?.get(MASTRA_RESOURCE_ID_KEY as any),
     });
 
-    const user = db
-      .prepare<string, User>(`SELECT * FROM users WHERE id = ?`)
-      .get(inputData.userId);
+    const user = (await db
+      .prepare(
+        `SELECT u.id AS "id", u.name AS "name", u.email AS "email",
+                p.phone, p.address,
+                p.credit_card AS "creditCard", p.cvv, p.pin,
+                p.account_balance AS "accountBalance"
+         FROM neon_auth."user" u
+         JOIN user_profiles p ON p.user_id = u.id
+         WHERE u.id = $1`,
+      )
+      .get([inputData.userId])) as User | null;
 
     if (!user) return { error: `User ${inputData.userId} not found` };
 
-    // ── Security: mask/strip sensitive financial fields at the source ────────
-    // The LLM, memory, and any downstream guardrail should never see these
-    // raw values — masking here means there is nothing to leak, regardless
-    // of how the conversation unfolds afterward.
     const { creditCard, cvv, pin, accountBalance, ...safeFields } = user;
 
     return {
       ...safeFields,
       cardLast4: maskCard(creditCard),
-      // CVV and PIN are NEVER returned — there is no legitimate customer
-      // support reason for the agent to see or repeat these.
-      // accountBalance is also withheld here; expose it only via a
-      // dedicated, policy-gated tool if a real use case requires it.
     };
   },
 });

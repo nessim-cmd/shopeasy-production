@@ -26,7 +26,7 @@ import { handleRefundWorkflow } from "./workflows/handleRefundWorkflow.js";
 import { escalateWorkflow } from "./workflows/escalateWorkflow.js";
 import { scheduleReturnWorkflow } from "./workflows/scheduleReturnWorkflow.js";
 import { trackOrderWorkflow } from "./workflows/trackOrderWorkflow.js";
-import { apiKeyMiddleware } from "./middleware.js";
+import { apiKeyMiddleware, userIdentityMiddleware } from "./middleware.js";
 
 const customLogger = new PinoLogger({
   name: "ShopEasyAgent",
@@ -49,25 +49,25 @@ export const mastra = new Mastra({
   logger: customLogger,
   deployer: new VercelDeployer(),
   server: {
-    apiEndpoint: "/api",
+    apiPrefix: "/api",
     middleware: [
       {
         handler: apiKeyMiddleware,
         path: "/api/*",
       },
+      {
+        handler: userIdentityMiddleware,
+        path: "/api/*",
+      },
     ],
     apiRoutes: [
-      registerApiRoute("/", {
-        method: "GET",
-        handler: async (c) => {
-          try {
-            const html = readFileSync(path.join(PROJECT_ROOT, "src/mastra/public/index.html"), "utf-8");
-            return c.html(html);
-          } catch (err: any) {
-            return c.text("Error loading index.html: " + err.message, 500);
-          }
-        },
-      }),
+      // ❌ Removed: registerApiRoute("/", ...) — this was overriding the root
+      // path and hijacking it from Mastra Studio, which normally serves its
+      // playground UI there. src/mastra/public/index.html never existed,
+      // hence the ENOENT error you were seeing at localhost:4111.
+      // If you later want a custom landing page, serve it from a path
+      // other than "/" (e.g. "/demo") so Studio keeps the root.
+
       registerApiRoute("/products", {
         method: "GET",
         handler: async (c) => {

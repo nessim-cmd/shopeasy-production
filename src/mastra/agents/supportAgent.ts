@@ -1,7 +1,7 @@
 // src/mastra/agents/supportAgent.ts
 import { Agent } from "@mastra/core/agent";
 import { llmModel } from "../config/llm.js";
-// import { agentMemory } from "../memory/memory.js"; // TEMPORARILY DISABLED to isolate crash
+import { agentMemory } from "../memory/memory.js";
 import { mcpClient } from "../mcp/mcpClient.js";
 import { getOrderTool } from "../tools/getOrder.js";
 import { getAllOrdersTool } from "../tools/getAllOrders.js";
@@ -36,7 +36,7 @@ export const supportAgent = new Agent({
   name: "ShopEasy Support Agent",
   instructions: SYSTEM_PROMPT,
   model: llmModel,
-  // memory: agentMemory, // TEMPORARILY DISABLED to isolate crash
+  memory: agentMemory,
   defaultOptions: { maxSteps: 15 },
   inputProcessors: [
     new InputGuardrail(),

@@ -1,102 +1,49 @@
 // src/mastra/data/db.ts
-  import "dotenv/config";
-  import { Pool } from "pg";
-  import path from "path";
-  import { existsSync, mkdirSync } from "fs";
-  import { PROJECT_ROOT } from "../config/root.js";
+import "dotenv/config";
+import { Pool } from "pg";
 
-  // Determine database configuration
-  const usePostgres = !!process.env.DATABASE_URL;
-  const usePostgresForBusiness = !!process.env.STORE_DATABASE_URL;
+// Business data (orders, products, user_profiles, support_tickets) lives in
+// neondb, reachable via STORE_DATABASE_URL — NOT DATABASE_URL, which points
+// at agent_db (Mastra's own memory/thread storage). Mixing these up is why
+// get-order / get-product couldn't find anything: they were querying
+// agent_db, which has no "orders" or "products" tables at all.
+const connectionString = process.env.STORE_DATABASE_URL;
+if (!connectionString) {
+  throw new Error(
+    "Missing STORE_DATABASE_URL — set it in your .env to your neondb (business data) connection string.",
+  );
+}
 
-  let businessPool: Pool;
-  let agentPool: Pool;
+const pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
 
-  if (usePostgresForBusiness) {
-    businessPool = new Pool({ connectionString: process.env.STORE_DATABASE_URL! });
-  } else {
-    businessPool = new Pool({ connectionString: process.env.DATABASE_URL! });
+async function queryDB(text: string, params: unknown[] = []) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(text, params);
+    return result.rows;
+  } finally {
+    client.release();
   }
+}
 
-  if (usePostgres) {
-    agentPool = new Pool({ connectionString: process.env.DATABASE_URL! });
-  } else {
-    // Fallback to SQLite for local development (if needed)
-    const Database = require("better-sqlite3");
-    const DATA_DIR = path.join(PROJECT_ROOT, "src", "mastra", "data");
-    const BUSINESS_DB_PATH = path.join(DATA_DIR, "shop_business.db");
-    const MEMORY_DB_PATH = path.join(DATA_DIR, "memory-agent.db");
-
-    if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-
-    const businessDb = new Database(BUSINESS_DB_PATH);
-    businessDb.pragma("journal_mode = WAL");
-    businessDb.pragma("foreign_keys = ON");
-
-    const memoryDb = new Database(MEMORY_DB_PATH);
-    memoryDb.pragma("journal_mode = WAL");
-    memoryDb.pragma("foreign_keys = ON");
-
-    businessPool = businessDb as any;
-    agentPool = memoryDb as any;
-  }
-
-  // Helper to execute queries with proper parameter handling
-  const queryDB = async (pool: Pool, text: string, params: any[] = []) => {
-    if (process.env.DATABASE_URL) { // PostgreSQL path
-      const client = await pool.connect();
-      try {
-        const result = await client.query(text, params);
-        return result.rows;
-      } finally {
-        client.release();
-      }
-    } else { // SQLite path (fallback)
-      // Handle both pg.Pool and better-sqlite3.Database interfaces
-      if (pool.prepare) {
-        // It's a better-sqlite3.Database
-        const stmt = pool.prepare(text);
-        return params ? stmt.all(...params) : stmt.all();
-      } else {
-        // It's a pg.Pool (shouldn't happen in fallback, but just in case)
-        const client = await pool.connect();
-        try {
-          const result = await client.query(text, params);
-          return result.rows;
-        } finally {
-          client.release();
-        }
-      }
-    }
+function makeDB() {
+  return {
+    query: (text: string, params: unknown[] = []) => queryDB(text, params),
+    prepare: (text: string) => ({
+      all: (params: unknown[] = []) => queryDB(text, params),
+      get: async (params: unknown[] = []) => {
+        const results = await queryDB(text, params);
+        return results[0] ?? null;
+      },
+    }),
   };
+}
 
-  // Export functions that match what the tools expect
-  export const getBusinessDB = () => ({
-    query: (text: string, params: any[] = []) => queryDB(businessPool, text, params),
-    prepare: (text: string) => {
-      return {
-        all: (params: any[] = []) => queryDB(businessPool, text, params),
-        get: (params: any[] = []) => {
-          const results = queryDB(businessPool, text, params);
-          return results[0] || null;
-        }
-      };
-    }
-  });
-
-  export const getAgentDB = () => ({
-    query: (text: string, params: any[] = []) => queryDB(agentPool, text, params),
-    prepare: (text: string) => {
-      return {
-        all: (params: any[] = []) => queryDB(agentPool, text, params),
-        get: (params: any[] = []) => {
-          const results = queryDB(agentPool, text, params);
-          return results[0] || null;
-        }
-      };
-    }
-  });
-
-  // For backward compatibility with existing tool imports
-  export const db = getBusinessDB();
-  export default db;
+// Both exported for backward compatibility with existing tool imports.
+export const getBusinessDB = makeDB;
+export const getAgentDB = makeDB; // NOTE: this now also points at neondb via
+// STORE_DATABASE_URL. If any tool actually needs to query Mastra's own
+// system tables (agent_db), give it its own explicit connection instead of
+// relying on this export — don't silently repoint it back to DATABASE_URL.
+export const db = getBusinessDB();
+export default db;
