@@ -3,9 +3,6 @@ import "dotenv/config";
 import { readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import os from "os";
-import { rmSync, existsSync, mkdirSync } from "fs";
-import { FlagEmbedding, EmbeddingModel } from "@mastra/fastembed";
 import { embedV3 as embed } from "@mastra/core/vector";
 import { PgVector } from "@mastra/pg";
 import { embedder, EMBEDDING_DIMENSION } from "../config/embedder.js";
@@ -45,73 +42,26 @@ function chunkText(
   return chunks;
 }
 
-// ── Step 1: clean any corrupted cache and init the model ──────────
-// retrieveModel skips download if the directory exists even if files are missing.
-// We wipe the directory first to guarantee a clean download.
-const cacheDir = process.env.FASTEMBED_CACHE_DIR ?? "/tmp/fastembed-models";
-const modelDir = path.join(cacheDir, "fast-bge-small-en-v1.5");
-const tokenizer = path.join(modelDir, "tokenizer.json");
-
-// Single attempt only — if the network can't get the model in one try,
-// don't waste time retrying. Just skip and let the agent run without RAG.
-const MAX_RETRIES = 1;
-let modelReady = false;
-
-for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-  try {
-    if (!existsSync(tokenizer)) {
-      console.log(`🗑️  Model not fully cached — cleaning temp files (Attempt ${attempt}/${MAX_RETRIES})…`);
-      rmSync(cacheDir, { recursive: true, force: true });
-      mkdirSync(cacheDir, { recursive: true });
-    } else {
-      // Ensure cacheDir exists even if tokenizer exists, just in case
-      mkdirSync(cacheDir, { recursive: true });
-    }
-
-    console.log("⬇️  Initialising bge-small-en-v1.5 (downloads ~30 MB if not cached)…");
-
-    // Add a strict 60-second timeout because fastembed hangs forever on some networks
-    const initPromise = FlagEmbedding.init({
-      model: EmbeddingModel.BGESmallENV15,
-      cacheDir,
-      showDownloadProgress: true,
-    });
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Download hung/timed out after 60 seconds")), 60000)
-    );
-
-    await Promise.race([initPromise, timeoutPromise]);
-
-    console.log("   ✅ Model ready");
-    modelReady = true;
-    break; // success
-  } catch (err: any) {
-    console.error(`❌ Download failed on attempt ${attempt}:`, err.message);
-    if (attempt === MAX_RETRIES) {
-      console.warn("🚨 Could not download the embedding model on this attempt.");
-      console.warn("⏭️  Skipping Knowledge Base seeding. The agent will work, but RAG will be empty.");
-      // Clean up any partially-downloaded/corrupted cache so it doesn't
-      // crash the agent's runtime embedder later (see config/embedder.ts).
-      rmSync(cacheDir, { recursive: true, force: true });
-      process.exit(0); // Exit cleanly so Docker can continue booting the app!
-    }
-  }
-}
-
-if (!modelReady) {
-  console.warn("⏭️  Skipping Knowledge Base seeding.");
-  process.exit(0);
-}
-
-// ── Step 2: chunk ─────────────────────────────────────────────────
+// ── Step 1: chunk ─────────────────────────────────────────────────
 const chunks = chunkText(policyText, CHUNK_SIZE, CHUNK_OVERLAP);
 console.log(`✂️  Created ${chunks.length} chunks`);
 
-// ── Step 3: create PgVector index ────────────────────────────────
+// ── Step 2: create/recreate PgVector index ────────────────────────
 const pgVector = new PgVector({
   id: "knowledge-seeder",
   connectionString: process.env.DATABASE_URL!,
 });
+
+// The dimension changed (384 → 768) with the fastembed → Gemini swap, so
+// any existing index built for the old model must be dropped first, or
+// upserts of 768-dim vectors into a 384-dim index will fail/corrupt.
+console.log(`🗑️  Dropping any existing "${INDEX_NAME}" index (dimension change)…`);
+try {
+  await pgVector.deleteIndex({ indexName: INDEX_NAME });
+  console.log("   ✅ Old index dropped");
+} catch (err: any) {
+  console.log("   ↳ No existing index to drop (fine on first run)");
+}
 
 console.log(
   `🗄️  Creating PgVector index "${INDEX_NAME}" (dim=${EMBEDDING_DIMENSION}, cosine)…`,
@@ -123,7 +73,7 @@ await pgVector.createIndex({
 });
 console.log("   ✅ Index ready");
 
-// ── Step 4: embed + upsert ────────────────────────────────────────
+// ── Step 3: embed + upsert ────────────────────────────────────────
 const BATCH = 32;
 let total = 0;
 

@@ -1,46 +1,40 @@
 // src/mastra/config/embedder.ts
-import { fastembed } from "@mastra/fastembed";
-import { existsSync, rmSync } from "fs";
-import path from "path";
+import { ModelRouterEmbeddingModel } from "@mastra/core/llm";
+import type { EmbeddingModelId } from "@mastra/core/llm";
 
-export const EMBEDDING_DIMENSION = 384;
+// gemini-embedding-001 natively outputs 3072 dims, but pgvector's index
+// types (ivfflat/hnsw) cap out at 2000 dims — no index can be built above
+// that. The model supports Matryoshka Representation Learning (MRL): the
+// first N dimensions of the full output are themselves a valid embedding,
+// so we truncate to 768 and re-normalize, rather than needing a native
+// "smaller output" API option (which Mastra's router doesn't expose).
+export const EMBEDDING_DIMENSION = 768;
 
-// ── Defensive cache cleanup ────────────────────────────────────────
-// If a previous run left a partial/corrupted download behind (e.g. the
-// process was killed mid-download, or the network hung), retrying to use
-// it later crashes with a ZlibError/TAR_ABORT instead of just re-downloading.
-// A missing tokenizer.json means the download never completed — wipe the
-// whole cache dir in that case so the next load attempt starts clean.
-const cacheDir = process.env.FASTEMBED_CACHE_DIR ?? "/tmp/fastembed-models";
-const modelDir = path.join(cacheDir, "fast-bge-small-en-v1.5");
-const tokenizer = path.join(modelDir, "tokenizer.json");
+const modelId: EmbeddingModelId = "google/gemini-embedding-001";
+const realEmbedder = new ModelRouterEmbeddingModel(modelId);
 
-if (existsSync(modelDir) && !existsSync(tokenizer)) {
-  console.warn("[embedder] Found incomplete/corrupted fastembed cache, cleaning up:", modelDir);
-  try {
-    rmSync(cacheDir, { recursive: true, force: true });
-  } catch (err: any) {
-    console.warn("[embedder] Failed to clean cache dir:", err.message);
-  }
+function truncateAndNormalize(vector: number[], dims: number): number[] {
+  const truncated = vector.slice(0, dims);
+  const norm = Math.sqrt(truncated.reduce((sum, v) => sum + v * v, 0));
+  if (norm === 0) return truncated;
+  return truncated.map((v) => v / norm);
 }
 
-const realEmbedder = fastembed.small;
-
-// ── Safety wrapper ──────────────────────────────────────────────────
-// NOTE: this assumes realEmbedder exposes a `doEmbed({ values })` method
-// (the standard ai-sdk EmbeddingModelV1 shape @mastra/fastembed implements).
-// If your installed version's interface differs, check
-// node_modules/@mastra/fastembed's types and adjust the method name below.
-//
-// Never let a failed/timed-out model load crash the whole agent process.
-// On failure we log it and return zero-vectors instead — semantic recall /
-// RAG will just silently return no useful matches rather than taking the
-// whole app down.
+// ── Safety + truncation wrapper ──────────────────────────────────────
+// 1. Truncates Google's 3072-dim output down to EMBEDDING_DIMENSION (MRL).
+// 2. Never lets a failed/timed-out embedding call crash the whole agent
+//    process — on failure, logs it and returns zero-vectors instead.
 export const embedder = {
   ...realEmbedder,
   async doEmbed(options: any) {
     try {
-      return await realEmbedder.doEmbed(options);
+      const result = await realEmbedder.doEmbed(options);
+      return {
+        ...result,
+        embeddings: result.embeddings.map((e: number[]) =>
+          truncateAndNormalize(e, EMBEDDING_DIMENSION),
+        ),
+      };
     } catch (err: any) {
       console.error(
         "[embedder] Embedding failed — returning empty vectors so the app keeps running:",
@@ -51,9 +45,6 @@ export const embedder = {
         embeddings: Array.from({ length: count }, () =>
           new Array(EMBEDDING_DIMENSION).fill(0),
         ),
-        // The ai SDK's internal logger unconditionally reads result.warnings.length
-        // — omitting this crashes the whole process with a TypeError, which is
-        // exactly what happened. Always include it, even empty.
         warnings: [],
       };
     }

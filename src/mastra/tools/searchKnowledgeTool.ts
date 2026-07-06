@@ -2,31 +2,12 @@
 import "dotenv/config";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import path from "path";
-import os from "os";
-import { rmSync, existsSync } from "fs";
-import { FlagEmbedding, EmbeddingModel } from "@mastra/fastembed";
 import { embedV3 as embed } from "@mastra/core/vector";
 import { PgVector } from "@mastra/pg";
 import { embedder } from "../config/embedder.js";
 
 const INDEX_NAME = "knowledge_base";
 const TOP_K = 4;
-
-// ── Ensure model is ready once at module load ─────────────────────
-const cacheDir = process.env.FASTEMBED_CACHE_DIR ?? "/tmp/fastembed-models";
-const modelDir = path.join(cacheDir, "fast-bge-small-en-v1.5");
-const tokenizer = path.join(modelDir, "tokenizer.json");
-
-if (existsSync(modelDir) && !existsSync(tokenizer)) {
-  rmSync(modelDir, { recursive: true, force: true });
-}
-
-await FlagEmbedding.init({
-  model: EmbeddingModel.BGESmallENV15,
-  cacheDir,
-  showDownloadProgress: false, // silent in the agent — it's already downloaded by seed
-});
 
 // ── Lazy PgVector singleton ───────────────────────────────────────
 let _pgVector: PgVector | null = null;
