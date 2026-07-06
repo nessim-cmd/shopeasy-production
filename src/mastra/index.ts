@@ -47,17 +47,25 @@ export const mastra = new Mastra({
   }),
   logger: customLogger,
   server: {
-    apiPrefix: "/api",
-    middleware: [
-      {
-        handler: apiKeyMiddleware,
-        path: "/api/*",
-      },
-      {
-        handler: userIdentityMiddleware,
-        path: "/api/*",
-      },
+  apiPrefix: "/api",
+  cors: {
+    origin: "*", // or restrict to ["https://store-agent-five.vercel.app", "http://localhost:3000"] once confirmed working
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowHeaders: [
+      "Content-Type",
+      "Authorization",
+      "x-mastra-client-type",
+      "x-mastra-dev-playground",
+      "x-api-key",
+      "x-user-id",
     ],
+    exposeHeaders: ["Content-Length", "X-Requested-With"],
+    credentials: false,
+  },
+  middleware: [
+    { handler: apiKeyMiddleware, path: "/api/*" },
+    { handler: userIdentityMiddleware, path: "/api/*" },
+  ],
     apiRoutes: [
       // ❌ Removed: registerApiRoute("/", ...) — this was overriding the root
       // path and hijacking it from Mastra Studio, which normally serves its

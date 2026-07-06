@@ -2,7 +2,6 @@
 import { Agent } from "@mastra/core/agent";
 import { llmModel } from "../config/llm.js";
 import { agentMemory } from "../memory/memory.js";
-import { mcpClient } from "../mcp/mcpClient.js";
 import { getOrderTool } from "../tools/getOrder.js";
 import { getAllOrdersTool } from "../tools/getAllOrders.js";
 import { getUserDataTool } from "../tools/getUserData.js";
@@ -28,8 +27,6 @@ import { MemorySanitizer } from "../guardrails/memorySanitizer.js";
 import { OutputGuardrail } from "../guardrails/outputGuardrail.js";
 import { SYSTEM_PROMPT } from "./systemPrompt.js";
 
-const mcpTools = await mcpClient.listTools();
-console.log("[Agent] MCP tools loaded:", Object.keys(mcpTools).length, "tools");
 
 export const supportAgent = new Agent({
   id: "support-agent",
