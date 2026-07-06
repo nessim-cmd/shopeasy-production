@@ -22,8 +22,10 @@ export const REDACT_PATTERNS: RedactPattern[] = [
   {
     id: "credit_card_number",
     // 13-19 digits, optionally grouped by spaces or dashes (Visa/MC/Amex/Discover shapes)
-    pattern: /\b(?:\d[ -]?){13,19}\b/g,
-    note: "Credit card number — any 13-19 digit sequence, grouped or not",
+    // Excludes matches preceded by "ORD-" (case-insensitive) so order IDs aren't
+    // mistaken for card numbers.
+    pattern: /\b(?<!ORD-)(?:\d[ -]?){13,19}\b/gi,
+    note: "Credit card number — any 13-19 digit sequence, grouped or not (excludes ORD- prefixed order IDs)",
     replacement: "[REDACTED-CARD]",
   },
   {
