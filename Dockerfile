@@ -17,8 +17,6 @@ RUN npm config set fetch-retry-maxtimeout 600000 -g && \
 
 COPY . .
 
-ENV FASTEMBED_CACHE_DIR=/opt/fastembed-cache
-RUN npx tsx scripts/downloadEmbedModel.ts
 
 # Production build — mastra dev is a watch/rebuild dev server, not meant
 # for a deployed container.
