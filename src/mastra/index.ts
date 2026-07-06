@@ -15,7 +15,6 @@ import { PinoLogger } from "@mastra/loggers";
 import { registerApiRoute } from "@mastra/core/server";
 import { readFileSync } from "fs";
 import path from "path";
-import { VercelDeployer } from "@mastra/deployer-vercel";
 import { PostgresStore } from "@mastra/pg";
 
 import { PROJECT_ROOT } from "./config/root.js";
@@ -47,7 +46,6 @@ export const mastra = new Mastra({
     connectionString: process.env.DATABASE_URL,
   }),
   logger: customLogger,
-  deployer: new VercelDeployer(),
   server: {
     apiPrefix: "/api",
     middleware: [
