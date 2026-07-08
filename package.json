@@ -15,7 +15,11 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
-    "db:reset": "docker compose down -v && docker compose up -d"
+    "db:reset": "docker compose down -v && docker compose up -d",
+    "dev:local": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d",
+    "dev:local:logs": "docker logs -f shop_app",
+    "dev:local:down": "docker compose -f docker-compose.yml -f docker-compose.dev.yml down",
+    "dev:local:restart": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate app"
   },
   "keywords": [],
   "author": "",
@@ -39,7 +43,6 @@
     "@mastra/observability": "^1.14.1",
     "@mastra/pg": "^1.13.0",
     "@openrouter/ai-sdk-provider": "^2.9.1",
-    "better-sqlite3": "^12.11.1",
     "dotenv": "^17.4.2",
     "googleapis": "^173.0.0",
     "hono": "^4.12.27",
@@ -49,12 +52,12 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.9.3",
     "@types/nodemailer": "^8.0.1",
     "@types/pg": "^8.20.0",
     "mastra": "^1.13.0",
     "tsx": "^4.22.4",
+    "turbo": "^2.4.0",
     "typescript": "^6.0.3"
   },
   "optionalDependencies": {
