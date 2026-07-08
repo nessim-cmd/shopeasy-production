@@ -6,6 +6,12 @@ settings:
 
 importers:
 
+  .:
+    devDependencies:
+      turbo:
+        specifier: ^2.4.0
+        version: 2.10.4
+
   apps/agent:
     dependencies:
       '@ai-sdk/openai':
