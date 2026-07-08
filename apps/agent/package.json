@@ -19,7 +19,8 @@
     "dev:local": "docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d",
     "dev:local:logs": "docker logs -f shop_app",
     "dev:local:down": "docker compose -f docker-compose.yml -f docker-compose.ollama.yml down",
-    "dev:local:restart": "docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d --force-recreate app"
+    "dev:local:restart": "docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d --force-recreate app",
+    "dev:gpu": "docker compose -f docker-compose.yml -f docker-compose.ollama.yml -f docker-compose.gpu.yml up -d"
   },
   "keywords": [],
   "author": "",
