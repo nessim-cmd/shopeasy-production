@@ -9,19 +9,19 @@ ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 WORKDIR /app
 
-COPY package.json package-lock.json .npmrc* ./
+COPY package.json .npmrc* ./
 
-RUN npm config set fetch-retry-maxtimeout 600000 -g && \
-    npm config set fetch-retries 5 -g && \
-    npm install --prefer-offline || npm install
+RUN npm install -g pnpm && \
+    pnpm install
+
 
 COPY . .
 
 
 # Production build — mastra dev is a watch/rebuild dev server, not meant
 # for a deployed container.
-RUN npm run build
+RUN pnpm run build
 
 EXPOSE 4111
 
-CMD ["npm", "run", "start"]
+CMD ["pnpm", "run", "start"]

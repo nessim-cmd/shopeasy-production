@@ -27,7 +27,9 @@ services:
       - postgres
 
   app:
-    build: .
+    build:
+      context: .
+      network: host
     container_name: shop_app
     restart: unless-stopped
     env_file: .env
@@ -41,7 +43,7 @@ services:
       # hides it. Runtime never touches the network for this model.
       FASTEMBED_CACHE_DIR: /opt/fastembed-cache
     command: >
-      sh -c "npm run seed:all && npm run dev"
+      sh -c "pnpm run seed:all && pnpm run dev"
     ports:
       - "4111:4111"
     volumes:
