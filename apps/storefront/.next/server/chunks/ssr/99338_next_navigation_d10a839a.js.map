@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":["file:///home/nassim/Documents/shopEasy-agent/customer-support-ai-agent-example/node_modules/.pnpm/next%4015.5.18_%40babel%2Bcore%407.29.7_%40opentelemetry%2Bapi%401.9.1_react-dom%4019.0.5_react%4019.0.5__react%4019.0.5/node_modules/next/navigation.js"],"sourcesContent":["module.exports = require('./dist/client/components/navigation')\n"],"names":[],"mappings":"AAAA,OAAO,OAAO","ignoreList":[0],"debugId":null}}]
-}
