@@ -10,9 +10,8 @@ export async function apiKeyMiddleware(c: any, next: any) {
     return next();
   }
 
-  const apiKey =
-    c.req.header("x-api-key") ??
-    c.req.header("authorization")?.replace("Bearer ", "");
+  // Only check x-api-key since Authorization is now reserved for the Medusa session token
+  const apiKey = c.req.header("x-api-key");
   const validKey = process.env.API_SECRET_KEY;
 
   if (validKey && apiKey !== validKey) {
@@ -52,14 +51,32 @@ export async function apiKeyMiddleware(c: any, next: any) {
   }
 }
 
-// Reads the real, Neon-Auth-verified user ID forwarded by the store's backend
-// (never trust this header if it could come straight from a browser — only
-// accept it here because apiKeyMiddleware already gates this same path).
+// Verifies the Medusa session token directly with the Medusa server
 export async function userIdentityMiddleware(c: any, next: any) {
-  const userId = c.req.header("x-user-id");
+  const authHeader = c.req.header("authorization");
   const requestContext = c.get("requestContext");
-  if (userId && requestContext) {
-    requestContext.set(MASTRA_RESOURCE_ID_KEY, userId);
+
+  if (authHeader && requestContext) {
+    try {
+      const pk = (process.env.MEDUSA_PUBLISHABLE_KEY || "").replace(/^["']|["']$/g, '');
+      const response = await fetch(`${process.env.MEDUSA_BACKEND_URL || "http://localhost:9000"}/store/customers/me`, {
+        method: "GET",
+        headers: {
+          "Authorization": authHeader,
+          "x-publishable-api-key": pk
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.customer?.id) {
+          requestContext.set(MASTRA_RESOURCE_ID_KEY, data.customer.id);
+        }
+      }
+    } catch (err) {
+      console.error("[userIdentityMiddleware] Failed to verify Medusa session:", err);
+    }
   }
+
   await next();
 }

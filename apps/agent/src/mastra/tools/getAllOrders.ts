@@ -1,8 +1,9 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import db from "../data/db.js";
 import { MASTRA_RESOURCE_ID_KEY } from "@mastra/core/request-context";
 import { enforcePolicy } from "../guardrails/policyEngine.js";
+import { medusa, getAdminHeaders } from "../utils/medusa.js";
+import type { HttpTypes } from "@medusajs/types";
 
 interface Order {
   id: string;
@@ -25,13 +26,24 @@ export const getAllOrdersTool = createTool({
       authenticatedUserId: requestContext?.get(MASTRA_RESOURCE_ID_KEY as any),
     });
 
-    const orders = (await db
-      .prepare(
-        `SELECT id, user_id AS "userId", product, status, total, tracking_url AS "trackingUrl"
-         FROM orders`,
-      )
-      .all()) as Order[];
+    const response = await medusa.client.fetch(
+      `/admin/orders`,
+      {
+        method: "GET",
+        headers: getAdminHeaders(),
+      }
+    ) as { orders: HttpTypes.AdminOrder[] };
+    const orders = response.orders;
 
-    return { orders, total: orders.length };
+    const mappedOrders: Order[] = orders.map((order) => ({
+      id: order.id,
+      userId: order.customer_id || "",
+      product: order.items?.[0]?.title || "Unknown Product",
+      status: order.status || "pending",
+      total: order.total || 0,
+      trackingUrl: null,
+    }));
+
+    return { orders: mappedOrders, total: mappedOrders.length };
   },
 });

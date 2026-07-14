@@ -44,9 +44,8 @@ const getOrderDetailsStep = createStep({
       orderId: inputData.orderId,
       userId: inputData.userId,
       orderDetails: order,
-      trackingUrl: order.trackingUrl ?? order.tracking_url ?? undefined,
-      trackingNumber:
-        order.trackingNumber ?? order.tracking_number ?? undefined,
+      trackingUrl: order.trackingUrl ?? undefined,
+      trackingNumber: undefined,
       status: order.status,
     };
   },
@@ -108,6 +107,8 @@ const fetchCarrierStatusStep = createStep({
       return {
         ...base,
         liveCarrierStatus:
+          result &&
+          typeof result === "object" &&
           "content" in result
             ? (result as any).content?.slice(0, 500)
             : undefined,

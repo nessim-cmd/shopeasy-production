@@ -1,12 +1,13 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import db from "../data/db.js";
 import { MASTRA_RESOURCE_ID_KEY } from "@mastra/core/request-context";
 import { enforcePolicy } from "../guardrails/policyEngine.js";
+import { medusa, getAdminHeaders } from "../utils/medusa.js";
+import type { HttpTypes } from "@medusajs/types";
 
 interface Order {
   id: string;
-  userId: string;
+  userId: string | null;
   product: string;
   status: string;
   total: number;
@@ -14,22 +15,34 @@ interface Order {
 }
 
 export async function getOrderLogic(orderId: string): Promise<Order | { error: string }> {
-  const order = (await db
-    .prepare(
-      `SELECT id, user_id AS "userId", product, status, total, tracking_url AS "trackingUrl"
-       FROM orders WHERE id = $1`,
-    )
-    .get([orderId])) as Order | null;
+  try {
+    const response = await medusa.client.fetch(
+      `/admin/orders/${orderId}?fields=+customer_id,+email`,
+      {
+        method: "GET",
+        headers: getAdminHeaders(),
+      }
+    ) as { order: HttpTypes.AdminOrder };
+    const order = response.order;
 
-  if (!order) return { error: `Order ${orderId} not found` };
-  return order;
+    return {
+      id: order.id,
+      userId: order.customer_id || order.email || null,
+      product: order.items?.[0]?.title || "Unknown Product",
+      status: order.status || "pending",
+      total: order.total || 0,
+      trackingUrl: null, // No native trackingUrl on standard Medusa response without fulfillment
+    };
+  } catch (error: any) {
+    return { error: `Order ${orderId} not found or Medusa API error: ${error.message}` };
+  }
 }
 
 export const getOrderTool = createTool({
   id: "get-order",
   description: "Get the full details of an order by its ID.",
   inputSchema: z.object({
-    orderId: z.string().describe("The order ID to look up, e.g. ORD-001"),
+    orderId: z.string().describe("The order ID to look up, e.g. order_12345"),
   }),
   execute: async (inputData, { requestContext }) => {
     console.log(`[getOrderTool] execute called for ${inputData.orderId}`);

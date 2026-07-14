@@ -31,7 +31,7 @@ const SCHEMA_SQL = `
   DROP TABLE IF EXISTS user_profiles;
 
   CREATE TABLE user_profiles (
-    user_id         UUID PRIMARY KEY REFERENCES neon_auth."user"(id),
+    user_id         TEXT PRIMARY KEY,
     phone           TEXT,
     address         TEXT,
     credit_card     TEXT,
@@ -51,7 +51,7 @@ const SCHEMA_SQL = `
 
   CREATE TABLE support_tickets (
     id          SERIAL PRIMARY KEY,
-    user_id     UUID NOT NULL REFERENCES user_profiles(user_id),
+    user_id     TEXT NOT NULL,
     order_id    TEXT,
     subject     TEXT NOT NULL,
     description TEXT NOT NULL,
@@ -81,7 +81,7 @@ async function seedUserProfiles(rows: Record<string, unknown>[]) {
          pin = EXCLUDED.pin,
          account_balance = EXCLUDED.account_balance`,
       [
-        row.id, // must be a real neon_auth."user".id — Postgres will reject it otherwise
+        row.id, // Medusa Customer ID
         row.phone ?? null,
         row.address ?? null,
         row.creditCard ?? null,
@@ -120,8 +120,7 @@ async function main() {
 
   await pool.query(SCHEMA_SQL);
 
-  // If a user id in users.json isn't a real neon_auth.user, Postgres rejects the
-  // insert with a foreign key violation — no separate validation step needed anymore.
+  // No foreign key to neon_auth anymore, so any ID is accepted.
   await seedUserProfiles(users);
   await seedOrders(orders);
 

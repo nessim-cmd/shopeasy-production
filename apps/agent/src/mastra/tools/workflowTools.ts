@@ -19,9 +19,9 @@ const getLastStepOutput = (r: WorkflowResult): unknown => {
 };
 
 // Lazy mastra loader — imported only at call time, never at module load time
-const getMastra = async () => {
-  const { mastra } = await import("../mastra");
-  return mastra;
+const getMastra = async (): Promise<any> => {
+  const mod = await import("../index.js") as any;
+  return mod.mastra;
 };
 
 export const triggerHandleRefundTool = createTool({

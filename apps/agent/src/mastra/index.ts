@@ -20,6 +20,9 @@ import { PostgresStore } from "@mastra/pg";
 import { PROJECT_ROOT } from "./config/root.js";
 import { getBusinessDB } from "./data/db.js";
 import { supportAgent } from "./agents/supportAgent.js";
+import { agentMemory } from "./memory/memory.js";
+import { MASTRA_RESOURCE_ID_KEY } from "@mastra/core/request-context";
+import { randomUUID } from "crypto";
 import { dailyReportWorkflow } from "./workflows/dailyReportWorkflow.js";
 import { handleRefundWorkflow } from "./workflows/handleRefundWorkflow.js";
 import { escalateWorkflow } from "./workflows/escalateWorkflow.js";
@@ -65,6 +68,8 @@ export const mastra = new Mastra({
   middleware: [
     { handler: apiKeyMiddleware, path: "/api/*" },
     { handler: userIdentityMiddleware, path: "/api/*" },
+    { handler: apiKeyMiddleware, path: "/chat/*" },
+    { handler: userIdentityMiddleware, path: "/chat/*" },
   ],
     apiRoutes: [
       // ❌ Removed: registerApiRoute("/", ...) — this was overriding the root
@@ -134,6 +139,100 @@ export const mastra = new Mastra({
             });
           } catch (err: any) {
             return c.text("Error loading widget.css: " + err.message, 404);
+          }
+        },
+      }),
+      registerApiRoute("/chat/message", {
+        method: "POST",
+        handler: async (c) => {
+          try {
+            const body = await c.req.json();
+            const { message, sessionId } = body;
+            let { threadId } = body;
+
+            // 1. Get resourceId (authenticated user or anonymous session)
+            const requestContext = c.get("requestContext");
+            let resourceId = requestContext?.get(MASTRA_RESOURCE_ID_KEY);
+
+            if (!resourceId) {
+              // Anonymous fallback
+              resourceId = sessionId || c.req.header("x-session-id") || "anonymous";
+              console.log(`\n[POST /chat/message] Access: UNVERIFIED. Using fallback resourceId: ${resourceId}`);
+            } else {
+              console.log(`\n[POST /chat/message] Access: VERIFIED MEDUSA SESSION. Using resourceId: ${resourceId}`);
+            }
+
+            // 2. Generate threadId if not provided
+            if (!threadId) {
+              threadId = randomUUID();
+            }
+
+            // 3. Generate response using supportAgent
+            const result = await supportAgent.generate(message, {
+              threadId,
+              resourceId,
+            });
+
+            const rawText = result.text || "";
+            const cleanText = rawText
+              .replace(/<START_OF_TURN>/g, '')
+              .replace(/START_OF_TURN>/g, '')
+              .replace(/<REMEMBER>[\s\S]*?REMEMBER>/g, '')
+              .replace(/<\/REMEMBER>/g, '') // Just in case it outputs standard XML
+              .trim();
+              
+            return c.json({ threadId, reply: cleanText });
+          } catch (err: any) {
+            console.error("Error in /chat/message:", err);
+            return c.json({ error: err.message }, 500);
+          }
+        },
+      }),
+      registerApiRoute("/chat/threads", {
+        method: "GET",
+        handler: async (c) => {
+          try {
+            const requestContext = c.get("requestContext");
+            const userId = requestContext?.get(MASTRA_RESOURCE_ID_KEY);
+
+            if (!userId) {
+              return c.json({ error: "Unauthorized" }, 401);
+            }
+
+            const threads = await agentMemory.listThreads({ resourceId: userId });
+            return c.json(threads);
+          } catch (err: any) {
+            console.error("Error in /chat/threads:", err);
+            return c.json({ error: err.message }, 500);
+          }
+        },
+      }),
+      registerApiRoute("/chat/threads/:threadId/messages", {
+        method: "GET",
+        handler: async (c) => {
+          try {
+            const threadId = c.req.param("threadId");
+            const requestContext = c.get("requestContext");
+            const userId = requestContext?.get(MASTRA_RESOURCE_ID_KEY);
+
+            if (!userId) {
+              return c.json({ error: "Unauthorized" }, 401);
+            }
+
+            // Verify the thread exists and belongs to the user
+            const thread = await agentMemory.getThreadById({ threadId });
+            if (!thread || thread.resourceId !== userId) {
+              // Treat mismatch as not found to avoid leaking existence
+              return c.json({ error: "Not Found" }, 404);
+            }
+
+            const store = await agentMemory.getMemoryStore();
+            const messages = await store.listMessages({ threadId });
+            
+            return c.json(messages);
+          } catch (err: any) {
+            console.error("Error in /chat/threads/:threadId/messages:", err);
+            return c.json({ error: err.message }, 500);
           }
         },
       }),

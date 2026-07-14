@@ -1,8 +1,9 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import db from "../data/db.js";
 import { MASTRA_RESOURCE_ID_KEY } from "@mastra/core/request-context";
 import { enforcePolicy } from "../guardrails/policyEngine.js";
+import { medusa, getAdminHeaders } from "../utils/medusa.js";
+import type { HttpTypes } from "@medusajs/types";
 
 export const updateAddressTool = createTool({
   id: "update-address",
@@ -20,14 +21,23 @@ export const updateAddressTool = createTool({
       authenticatedUserId: requestContext?.get(MASTRA_RESOURCE_ID_KEY as any),
     });
 
-    const rows = await db.query(
-      `UPDATE user_profiles SET address = $1 WHERE user_id = $2 RETURNING user_id`,
-      [newAddress, userId],
-    );
+    try {
+      await medusa.client.fetch(
+        `/admin/customers/${userId}/addresses`,
+        {
+          method: "POST",
+          headers: getAdminHeaders(),
+          body: {
+            address_name: "Delivery",
+            address_1: newAddress,
+            country_code: "us", // fallback country
+          }
+        }
+      );
 
-    if (rows.length === 0) {
-      return { success: false, error: `User ${userId} not found` };
+      return { success: true, updated: newAddress };
+    } catch (error: any) {
+      return { success: false, error: `Failed to update address: ${error.message}` };
     }
-    return { success: true, updated: newAddress };
   },
 });

@@ -25,7 +25,7 @@ export async function createTicketLogic(params: {
     const row = rows[0] as { id: number; created_at: string };
 
     console.log("[createTicket] SUCCESS:", row.id);
-    return { success: true, ticketId: row.id, createdAt: row.created_at };
+    return { success: true, ticketId: row.id.toString(), createdAt: row.created_at };
   } catch (err: any) {
     console.error("[createTicket] ERROR:", err.message);
     return { success: false, error: err.message };

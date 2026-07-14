@@ -26,9 +26,11 @@ Ordered phases — each one should be a clean, working state before moving to th
 - [ ] Widget posts messages to the agent's chat endpoint
 - [ ] Embed the built widget script into `apps/storefront`
 - [ ] Confirm it works standalone (drop into a plain HTML page) as a sanity check
+- [ ] *Open Question for Architecture:* Once Medusa owns the schema behind `STORE_DATABASE_URL`, does it need a fully separate database instance, or just separate tables/schemas inside the same Postgres instance as Mastra's internal state? ticket table
 
 ## Phase 5 — Wire the agent to Medusa
 - [ ] Replace SQLite fixture-based tools (`getOrderTool`, `getUserDataTool`, etc.) with calls to Medusa's Store/Admin API
+- [ ] Replace `getProductTool` mock data with live Medusa API calls
 - [ ] `createTicketTool` writes into Medusa's ticket table
 - [ ] Re-verify each of the original agent workflows (refund, return, escalation, KB search) against real Medusa data
 
