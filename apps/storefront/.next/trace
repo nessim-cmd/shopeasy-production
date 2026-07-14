@@ -28,3 +28,4 @@
 [{"name":"hot-reloader","duration":55,"timestamp":5394718208,"id":3,"tags":{"version":"15.5.18"},"startTime":1784019951207,"traceId":"7736519aeaf605c3"},{"name":"compile-path","duration":186220,"timestamp":5394903376,"id":4,"tags":{"trigger":"middleware"},"startTime":1784019951392,"traceId":"7736519aeaf605c3"}]
 [{"name":"next-dev","duration":2263655075,"timestamp":5394309882,"id":1,"tags":{},"startTime":1784019950799,"traceId":"7736519aeaf605c3"}]
 [{"name":"hot-reloader","duration":47,"timestamp":7683285504,"id":3,"tags":{"version":"15.5.18"},"startTime":1784022239775,"traceId":"35eb473fd8a004a5"},{"name":"compile-path","duration":177142,"timestamp":7683444887,"id":4,"tags":{"trigger":"middleware"},"startTime":1784022239934,"traceId":"35eb473fd8a004a5"}]
+[{"name":"next-dev","duration":2491583546,"timestamp":7682872112,"id":1,"tags":{},"startTime":1784022239361,"traceId":"35eb473fd8a004a5"}]
