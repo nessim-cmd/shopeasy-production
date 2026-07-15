@@ -3,6 +3,9 @@ import { z } from "zod";
 import { google } from "googleapis";
 import * as fs from "fs";
 import * as path from "path";
+import { MASTRA_RESOURCE_ID_KEY } from "@mastra/core/request-context";
+import { medusa, getAdminHeaders } from "../utils/medusa.js";
+import type { HttpTypes } from "@medusajs/types";
 
 function getCalendarClient() {
   const root = process.env.PROJECT_ROOT ?? process.cwd();
@@ -42,6 +45,9 @@ function getCalendarClient() {
 }
 
 // ── Shared logic — used by tool AND workflow steps ────────────────
+// NOTE: customerEmail must always be resolved server-side (never taken
+// verbatim from LLM/user input) before calling this. See bookAppointmentTool
+// .execute below.
 export async function bookAppointmentLogic(params: {
   title: string;
   description: string;
@@ -75,12 +81,36 @@ export async function bookAppointmentLogic(params: {
   }
 }
 
-import { enforcePolicy } from "../guardrails/policyEngine.js";
+// Looks up the *real* email address for the currently authenticated customer.
+// This is the only source of truth for the invited attendee — the LLM never
+// supplies it directly.
+async function resolveAuthenticatedCustomerEmail(customerId: string): Promise<string | null> {
+  try {
+    const response = await medusa.client.fetch(
+      `/admin/customers/${customerId}`,
+      {
+        method: "GET",
+        headers: getAdminHeaders(),
+      },
+    ) as { customer: HttpTypes.AdminCustomer };
+    return response.customer?.email || null;
+  } catch (err: any) {
+    console.error(`[bookAppointmentTool] Failed to resolve email for ${customerId}: ${err.message}`);
+    return null;
+  }
+}
 
 export const bookAppointmentTool = createTool({
   id: "book-appointment",
   description:
-    "Book a support appointment or delivery slot in Google Calendar.",
+    "Book a support appointment or delivery slot in Google Calendar for the currently " +
+    "authenticated customer. The customer's own registered email is invited automatically — " +
+    "this tool cannot invite arbitrary/external addresses.",
+  // SECURITY: customerEmail is intentionally NOT part of the input schema.
+  // The LLM (and therefore any prompt injection) can never choose who gets
+  // invited, which would otherwise let it leak conversation details (order
+  // info, address, etc. baked into `description`) to an attacker-controlled
+  // inbox via a calendar invite.
   inputSchema: z.object({
     title: z.string().describe("Title of the appointment"),
     description: z.string().describe("Details about the appointment"),
@@ -90,19 +120,31 @@ export const bookAppointmentTool = createTool({
     endDateTime: z
       .string()
       .describe("End time ISO 8601 e.g. 2026-06-16T15:00:00"),
-    customerEmail: z
-      .string()
-      .email()
-      .optional()
-      .describe("Customer email to invite"),
   }),
-  execute: async (inputData) => {
-    // Layer 5 — Check IDOR Appointment Policy
-    enforcePolicy({
-      toolName: "book-appointment",
-      targetEmail: inputData.customerEmail,
-    });
+  execute: async (inputData, { requestContext }) => {
+    const authenticatedUserId = requestContext?.get(MASTRA_RESOURCE_ID_KEY as any);
 
-    return bookAppointmentLogic(inputData);
+    if (!authenticatedUserId) {
+      return {
+        success: false,
+        error: "not_authenticated",
+        message: "You need to be logged in to book an appointment. Please log in and try again.",
+      };
+    }
+
+    const customerEmail = await resolveAuthenticatedCustomerEmail(authenticatedUserId as string);
+
+    if (!customerEmail) {
+      return {
+        success: false,
+        error: "email_not_found",
+        message: "I couldn't find a verified email address on your account.",
+      };
+    }
+
+    return bookAppointmentLogic({
+      ...inputData,
+      customerEmail,
+    });
   },
 });

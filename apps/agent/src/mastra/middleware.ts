@@ -1,5 +1,70 @@
 import type { Context, Next } from "hono";
 import { MASTRA_RESOURCE_ID_KEY } from "@mastra/core/request-context";
+import { randomUUID } from "crypto";
+import { agentMemory } from "./memory/memory.js";
+
+export async function copilotKitThreadMiddleware(c: any, next: any) {
+  const requestContext = c.get("requestContext");
+  const userId = requestContext?.get(MASTRA_RESOURCE_ID_KEY);
+
+  if (userId && userId !== "anonymous") {
+    try {
+      const threads = await agentMemory.listThreads({ resourceId: userId });
+      let threadId: string;
+      if (threads && threads.length > 0) {
+        threadId = threads[0].id;
+        console.log(`[copilotKitThreadMiddleware] Reusing thread ${threadId} for customer ${userId}`);
+      } else {
+        threadId = randomUUID();
+        await agentMemory.saveThread({
+          thread: {
+            id: threadId,
+            resourceId: userId,
+            title: `Copilot Thread for ${userId}`,
+            metadata: {},
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+        console.log(`[copilotKitThreadMiddleware] Created new thread ${threadId} for customer ${userId}`);
+      }
+
+      if (c.req.method === "POST") {
+        try {
+          const body = await c.req.json();
+          if (body.body) {
+            body.body.threadId = threadId;
+          } else if (body.params) {
+            body.params.threadId = threadId;
+          } else {
+            body.threadId = threadId;
+          }
+
+          // Clear cached parsed body in Hono
+          delete (c.req as any)._parsedBody;
+
+          const headers = new Headers(c.req.raw.headers);
+          headers.delete("content-length");
+
+          // Replace raw request body
+          c.req.raw = new Request(c.req.raw, {
+            body: JSON.stringify(body),
+            method: c.req.method,
+            headers,
+            duplex: "half",
+          } as any);
+        } catch (err: any) {
+          console.warn("[copilotKitThreadMiddleware] Failed to rewrite request body:", err.message);
+        }
+      }
+    } catch (err: any) {
+      console.error("[copilotKitThreadMiddleware] Error looking up/creating thread:", err);
+    }
+  }
+
+  await next();
+}
+
 
 export async function apiKeyMiddleware(c: any, next: any) {
   // Mastra Studio, when running via `mastra dev` on the same origin, tags

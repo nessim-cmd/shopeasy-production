@@ -1,9 +1,13 @@
 // src/mastra/tools/createTicket.ts
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
+import { MASTRA_RESOURCE_ID_KEY } from "@mastra/core/request-context";
 import db from "../data/db.js";
 
 // ── Shared logic — used by tool AND workflow steps ────────────────
+// NOTE: userId is intentionally required and is NEVER meant to be supplied
+// by the LLM/user input. Callers (the tool below, or any workflow step)
+// must pass the authenticatedUserId sourced from requestContext.
 export async function createTicketLogic(params: {
   userId: string;
   orderId?: string;
@@ -34,15 +38,36 @@ export async function createTicketLogic(params: {
 
 export const createTicketTool = createTool({
   id: "create-ticket",
-  description: "Create a support ticket in the database.",
+  description:
+    "Create a support ticket in the database for the currently authenticated customer. " +
+    "Requires the customer to be logged in — there is no anonymous ticket creation.",
+  // SECURITY: userId is deliberately NOT part of the input schema.
+  // The LLM cannot and must not supply/override the ticket owner — see
+  // getOrdersByUserTool for the same pattern. Only orderId/subject/description/
+  // priority come from the model; identity comes exclusively from requestContext.
   inputSchema: z.object({
-    userId: z.string(),
-    orderId: z.string().optional(),
-    subject: z.string(),
-    description: z.string(),
+    orderId: z.string().optional().describe("Optional related order ID, e.g. order_12345"),
+    subject: z.string().describe("Short summary of the issue"),
+    description: z.string().describe("Full description of the issue"),
     priority: z.enum(["low", "normal", "high"]).optional(),
   }),
-  execute: async (inputData) => {
-    return createTicketLogic(inputData);
+  execute: async (inputData, { requestContext }) => {
+    const authenticatedUserId = requestContext?.get(MASTRA_RESOURCE_ID_KEY as any);
+
+    if (!authenticatedUserId) {
+      return {
+        success: false,
+        error: "not_authenticated",
+        message: "You need to be logged in to create a support ticket. Please log in and try again.",
+      };
+    }
+
+    return createTicketLogic({
+      userId: authenticatedUserId as string,
+      orderId: inputData.orderId,
+      subject: inputData.subject,
+      description: inputData.description,
+      priority: inputData.priority,
+    });
   },
 });

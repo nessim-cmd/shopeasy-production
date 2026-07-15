@@ -14,7 +14,11 @@ if (!connectionString) {
   );
 }
 
-const pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
+const isLocal = connectionString.includes("localhost") || connectionString.includes("127.0.0.1");
+const pool = new Pool({
+  connectionString,
+  ssl: isLocal ? false : { rejectUnauthorized: false },
+});
 
 async function queryDB(text: string, params: unknown[] = []) {
   const client = await pool.connect();

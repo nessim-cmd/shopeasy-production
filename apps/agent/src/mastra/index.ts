@@ -28,7 +28,9 @@ import { handleRefundWorkflow } from "./workflows/handleRefundWorkflow.js";
 import { escalateWorkflow } from "./workflows/escalateWorkflow.js";
 import { scheduleReturnWorkflow } from "./workflows/scheduleReturnWorkflow.js";
 import { trackOrderWorkflow } from "./workflows/trackOrderWorkflow.js";
-import { apiKeyMiddleware, userIdentityMiddleware } from "./middleware.js";
+import { apiKeyMiddleware, userIdentityMiddleware, copilotKitThreadMiddleware } from "./middleware.js";
+import { registerCopilotKit } from "@ag-ui/mastra/copilotkit";
+
 
 const customLogger = new PinoLogger({
   name: "ShopEasyAgent",
@@ -48,6 +50,9 @@ export const mastra = new Mastra({
     id: "shopeasy-pg-storage",
     connectionString: process.env.DATABASE_URL,
   }),
+  bundler: {
+    externals: true,
+  },
   logger: customLogger,
   server: {
   apiPrefix: "/api",
@@ -68,10 +73,18 @@ export const mastra = new Mastra({
   middleware: [
     { handler: apiKeyMiddleware, path: "/api/*" },
     { handler: userIdentityMiddleware, path: "/api/*" },
+    { handler: apiKeyMiddleware, path: "/copilotkit" },
+    { handler: userIdentityMiddleware, path: "/copilotkit" },
+    { handler: copilotKitThreadMiddleware, path: "/copilotkit" },
     { handler: apiKeyMiddleware, path: "/chat/*" },
     { handler: userIdentityMiddleware, path: "/chat/*" },
   ],
     apiRoutes: [
+      registerCopilotKit({
+        path: "/copilotkit",
+        resourceId: "anonymous",
+      }),
+
       // ❌ Removed: registerApiRoute("/", ...) — this was overriding the root
       // path and hijacking it from Mastra Studio, which normally serves its
       // playground UI there. src/mastra/public/index.html never existed,
@@ -169,8 +182,14 @@ export const mastra = new Mastra({
 
             // 3. Generate response using supportAgent
             const result = await supportAgent.generate(message, {
-              threadId,
-              resourceId,
+              memory: {
+                thread: {
+                  id: threadId,
+                  resourceId,
+                },
+                resource: resourceId,
+              },
+              requestContext,
             });
 
             const rawText = result.text || "";
@@ -227,7 +246,7 @@ export const mastra = new Mastra({
             }
 
             const store = await agentMemory.getMemoryStore();
-            const messages = await store.listMessages({ threadId });
+            const messages = (await store.listMessages({ threadId })) || [];
             
             return c.json(messages);
           } catch (err: any) {

@@ -11,7 +11,7 @@ export async function processRefundLogic(orderId: string, amount: number, reason
   try {
     // 1. Fetch the order's payment collections
     const { order } = await medusa.client.fetch<{ order: HttpTypes.AdminOrder & { payment_collections?: any[] } }>(
-      `/admin/orders/${orderId}?fields=*payment_collections,*payment_collections.payments`,
+      `/admin/orders/${orderId}?fields=*payment_collections,*payment_collections.payments,*total`,
       {
         method: "GET",
         headers: getAdminHeaders(),
@@ -23,6 +23,29 @@ export async function processRefundLogic(orderId: string, amount: number, reason
 
     if (!payment) {
       return { success: false, error: `No captured payment found for order ${orderId}` };
+    }
+
+    // SECURITY: Validate the requested amount against what was actually
+    // captured and what has already been refunded. Never trust the amount
+    // supplied by the LLM at face value — a prompt injection or an insistent
+    // user could otherwise request a refund far larger than the order is
+    // worth.
+    const capturedAmount = payment.amount ?? 0;
+    const alreadyRefunded = (payment.refunds || []).reduce(
+      (sum: number, r: any) => sum + (r.amount || 0),
+      0,
+    );
+    const maxRefundable = capturedAmount - alreadyRefunded;
+
+    if (maxRefundable <= 0) {
+      return { success: false, error: `Order ${orderId} has already been fully refunded.` };
+    }
+
+    if (amount > maxRefundable) {
+      return {
+        success: false,
+        error: `Requested refund amount (${amount}) exceeds the refundable balance (${maxRefundable}) for order ${orderId}.`,
+      };
     }
 
     // 2. Refund the payment
@@ -68,12 +91,20 @@ export const processRefundTool = createTool({
     const orderCheck = await getOrderLogic(inputData.orderId);
     if ("error" in orderCheck) return { success: false, error: orderCheck.error };
 
-    await enforcePolicy({
-      toolName: "process-refund",
-      orderOwnerId: orderCheck.userId,
-      refundAmount: inputData.amount,
-      authenticatedUserId: requestContext?.get(MASTRA_RESOURCE_ID_KEY as any),
-    });
+    try {
+      await enforcePolicy({
+        toolName: "process-refund",
+        orderOwnerId: orderCheck.userId,
+        refundAmount: inputData.amount,
+        authenticatedUserId: requestContext?.get(MASTRA_RESOURCE_ID_KEY as any),
+      });
+    } catch (policyError: any) {
+      return {
+        success: false,
+        error: "policy_denied",
+        message: policyError?.message || "This refund request was denied by policy.",
+      };
+    }
 
     return processRefundLogic(inputData.orderId, inputData.amount, inputData.reason);
   },
