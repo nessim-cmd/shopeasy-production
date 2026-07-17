@@ -35,6 +35,29 @@ services:
       timeout: 5s
       retries: 10
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: agent_ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  ollama-init:
+    image: curlimages/curl:latest
+    container_name: agent_ollama_init
+    depends_on:
+      - ollama
+    entrypoint: ["sh", "-c", "sleep 5 && curl -s -X POST http://ollama:11434/api/pull -d '{\"name\": \"qwen3.5:9b\"}' && echo 'Model pulled successfully'"]
+
   agent:
     build:
       context: .
@@ -46,7 +69,9 @@ services:
       PROJECT_ROOT: /app
       DATABASE_URL: postgresql://shopuser:shoppassword@agent_db:5432/agent_db
       STORE_DATABASE_URL: postgresql://shopuser:shoppassword@store_db:5432/store_db
-      LLM_PROVIDER: openrouter
+      LLM_PROVIDER: ollama
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+      OLLAMA_MODEL: qwen3.5:9b
     command: sh -c "pnpm run seed:all && pnpm run dev"
     ports:
       - "4111:4111"
@@ -58,7 +83,10 @@ services:
         condition: service_healthy
       store_db:
         condition: service_healthy
+      ollama:
+        condition: service_started
 
 volumes:
   agent_pgdata:
   store_pgdata:
+  ollama_data:

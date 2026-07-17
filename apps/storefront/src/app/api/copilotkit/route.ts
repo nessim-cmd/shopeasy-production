@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthHeaders } from "../../../lib/data/cookies"; // adjust path to what grep actually shows
+import { getAuthHeaders } from "@lib/data/cookies";
 const AGENT_URL = process.env.AGENT_URL || "http://localhost:4111";
 const API_SECRET_KEY = process.env.API_SECRET_KEY || "";
 

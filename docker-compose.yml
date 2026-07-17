@@ -1,0 +1,101 @@
+services:
+  store_db:
+    image: postgres:16-alpine
+    container_name: shop_store_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: shopuser
+      POSTGRES_PASSWORD: shoppassword
+      POSTGRES_DB: store_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - store_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shopuser -d store_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  agent_db:
+    image: pgvector/pgvector:pg16
+    container_name: shop_agent_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: shopuser
+      POSTGRES_PASSWORD: shoppassword
+      POSTGRES_DB: agent_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - agent_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shopuser -d agent_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  medusa:
+    build:
+      context: ./apps/medusa
+      dockerfile: Dockerfile
+    container_name: shop_medusa
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://shopuser:shoppassword@store_db:5432/store_db
+      STORE_CORS: http://localhost:8000
+      ADMIN_CORS: http://localhost:5173,http://localhost:9000
+      AUTH_CORS: http://localhost:5173,http://localhost:9000,http://localhost:8000
+      JWT_SECRET: supersecret
+      COOKIE_SECRET: supersecret
+    ports:
+      - "9000:9000"
+    depends_on:
+      store_db:
+        condition: service_healthy
+
+  agent:
+    build:
+      context: ./apps/agent
+      dockerfile: Dockerfile
+    container_name: shop_agent
+    restart: unless-stopped
+    env_file: ./apps/agent/.env
+    environment:
+      PROJECT_ROOT: /app
+      DATABASE_URL: postgresql://shopuser:shoppassword@agent_db:5432/agent_db
+      STORE_DATABASE_URL: postgresql://shopuser:shoppassword@store_db:5432/store_db
+      LLM_PROVIDER: openrouter
+      MEDUSA_BACKEND_URL: http://medusa:9000
+    command: sh -c "pnpm run seed:all && pnpm run dev"
+    ports:
+      - "4111:4111"
+    depends_on:
+      agent_db:
+        condition: service_healthy
+      store_db:
+        condition: service_healthy
+      medusa:
+        condition: service_started
+
+  storefront:
+    build:
+      context: ./apps/storefront
+      dockerfile: Dockerfile
+    container_name: shop_storefront
+    restart: unless-stopped
+    env_file: ./apps/storefront/.env.local
+    environment:
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9000
+      AGENT_URL: http://agent:4111
+    ports:
+      - "8000:8000"
+    depends_on:
+      medusa:
+        condition: service_started
+      agent:
+        condition: service_started
+
+volumes:
+  store_pgdata:
+  agent_pgdata:
