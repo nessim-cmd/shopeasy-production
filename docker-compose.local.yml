@@ -73,7 +73,7 @@ services:
   medusa:
     build:
       context: ./apps/medusa
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.local
     container_name: shop_medusa
     restart: unless-stopped
     working_dir: /workspace/apps/medusa
@@ -100,7 +100,7 @@ services:
   agent:
     build:
       context: ./apps/agent
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.local
     container_name: shop_agent
     restart: unless-stopped
     env_file: ./apps/agent/.env.ollama
@@ -132,7 +132,7 @@ services:
   storefront:
     build:
       context: ./apps/storefront
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.local
     container_name: shop_storefront
     restart: unless-stopped
     working_dir: /workspace/apps/storefront
