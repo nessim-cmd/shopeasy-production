@@ -38,3 +38,7 @@ coverage/
 *.pem
 *.key
 *.crt
+
+
+.pnpm-store/
+.turbo/

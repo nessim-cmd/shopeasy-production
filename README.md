@@ -10,14 +10,14 @@ Built as a **Turborepo monorepo**: a Next.js storefront (featuring an integrated
 
 The monorepo operates with a divided database structure, separating business-logic data from the AI agent's memory and threads:
 
-```
+```text
                   ┌────────────────────────┐
                   │    apps/storefront     │
                   │   (Next.js / React)    │
                   └──────────┬─────────────┘
                              │
             ┌────────────────┴────────────────┐
-            │ (Next.js server-side api route)  │
+            │ (Next.js server-side api route) │
             │        /api/copilotkit          │
             └────────────────┬────────────────┘
                              │ Proxy
@@ -78,59 +78,82 @@ The monorepo operates with a divided database structure, separating business-log
 
 Depending on what you boot, the services will occupy the following host ports:
 
-| Service | Standalone Agent Mode | Full Monorepo Mode | Access URL |
-|---|---|---|---|
-| **Storefront** | *N/A* | `8000` | [http://localhost:8000](http://localhost:8000) |
-| **Medusa API** | *N/A* | `9000` | [http://localhost:9000](http://localhost:9000) |
-| **Mastra Studio** | `4111` | `4111` | [http://localhost:4111](http://localhost:4111) |
-| **Agent DB (Postgres)**| `5432` | `5432` | `localhost:5432` |
-| **Store DB (Postgres)**| `5434` | `5434` | `localhost:5434` |
+| Service | Access URL |
+|---|---|
+| **Storefront** | [http://localhost:8000](http://localhost:8000) |
+| **Medusa API & Admin** | [http://localhost:9000/app](http://localhost:9000/app) |
+| **Mastra Studio** | [http://localhost:4111](http://localhost:4111) |
+| **Agent DB (Postgres)**| `localhost:5432` |
+| **Store DB (Postgres)**| `localhost:5434` |
+| **Redis** | `localhost:6379` |
+| **Ollama API** | `http://localhost:11434` |
 
 ---
 
-## 🚀 Running the Standalone Agent (`apps/agent`)
+## ⚙️ Environment Setup
 
-If you want to run **only** the agent database, mock data, and Mastra studio:
+Before running the stack, you must configure the environment variables for each application in the monorepo.
 
+### 1. Storefront Environment
+Navigate to the storefront app and configure the environment:
+```bash
+cd apps/storefront
+cp .env.template .env.local
+```
+*(Ensure `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY` matches the key provided in your Medusa Admin panel).*
+
+### 2. Agent Environment (Ollama vs. OpenRouter)
+Navigate to the agent app and set up the environment files:
 ```bash
 cd apps/agent
-cp .env.example .env
 ```
 
-### Option A: OpenRouter (Cloud)
-Configure `OPENROUTER_API_KEY` in `apps/agent/.env`, then run:
-```bash
-docker compose up --build
+For **OpenRouter (Cloud)**, create `.env.openrouter`:
+```env
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=sk-or-v1-...
+OPENROUTER_MODEL=openrouter/free
+# ... plus database URLs from .env.example
 ```
 
-### Option B: Local Ollama (Nvidia GPU Accelerated)
-Runs Ollama locally using Nvidia GPU capabilities and automatically downloads the model:
-```bash
-docker compose -f docker-compose.local.yml up --build
+For **Ollama (Local)**, create `.env.ollama` (or simply `.env` for the local compose file):
+```env
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://ollama:11434/v1
+OLLAMA_MODEL=qwen3.5:9b
+# ... plus database URLs from .env.example
 ```
 
 ---
 
-## 🚀 Running the Full Monorepo (Root Directory)
+## 🚀 Running the Full Monorepo
 
-To run the Next.js Storefront, Medusa Backend, Mastra Agent, and databases together:
+We provide two separate `docker-compose` files in the **root** of the repository depending on your LLM hardware preferences.
 
+### Option A: Local Ollama (Nvidia GPU Accelerated)
+This mode runs the entire monorepo alongside a local, GPU-accelerated Ollama container. 
+It will **automatically** download the `qwen3.5:9b` model for you on boot!
+
+Run this in the root directory:
 ```bash
-# Run at the root directory
-cp .env.example .env
+docker compose -f docker-compose.local.yml up --build -d
+```
+*Note: The `docker-compose.local.yml` file uses `apps/agent/.env`. Ensure you have copied your settings there.*
+
+**Manually Pulling Models:**
+If you ever need to manually pull a model into the running container, execute:
+```bash
+docker exec -it shop_ollama ollama run qwen3.5:9b
 ```
 
-### Option A: OpenRouter (Cloud)
-Ensure `OPENROUTER_API_KEY` is configured in your root `.env` file, then run:
-```bash
-docker compose up --build
-```
+### Option B: OpenRouter (Cloud)
+This mode skips booting the heavy Ollama container and instead connects the agent to OpenRouter.
 
-### Option B: Local Ollama (Nvidia GPU Accelerated)
-Runs the entire monorepo alongside local GPU-accelerated Ollama:
+Run this in the root directory:
 ```bash
-docker compose -f docker-compose.local.yml up --build
+docker compose up --build -d
 ```
+*Note: The default `docker-compose.yml` file explicitly looks for `apps/agent/.env.openrouter` for the agent's environment.*
 
 ---
 
