@@ -1,73 +1,65 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
 name: Build and deploy Node.js app to Azure Web App - medusa-app
+
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: read #This is required for actions/checkout
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.10.0
-
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js version
+        uses: actions/setup-node@v3
         with:
           node-version: '22.x'
-          cache: 'pnpm'
 
-      - name: Install dependencies (monorepo root)
-        run: pnpm install --frozen-lockfile
-
-      - name: Build Medusa backend
-        run: pnpm turbo run build --filter=@dtc/backend
-
-      - name: Deploy production-only package
-        run: pnpm --filter=@dtc/backend deploy --prod --legacy ./deploy-medusa
-        env:
-          NODE_OPTIONS: --max-old-space-size=6144
-
-      - name: Zip artifact for deployment
-        run: zip -r ../release.zip ./* -x "*.git*"
-        working-directory: ./deploy-medusa
+      - name: npm install, build, and test
+        run: |
+          npm install
+          npm run build --if-present
+          npm run test --if-present
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: release.zip
+          path: .
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write
-      contents: read
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
+
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: node-app
-
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
-
+      
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_93058E70FB8D4A6D987494FA7741D1FC }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_74CB121B4EEA4F66948C62CAFA54B242 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_E4A76FA7C76F4B76807C5322C1B7AF8C }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_23C54AD469C043CC8CDD12987ED76B9D }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_DE90BB754D39442AB01455CF9EA67874 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_E14E2836AAC14A408AB2B39D22E575C5 }}
 
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
+      - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
         with:
           app-name: 'medusa-app'
           slot-name: 'Production'
           package: .
+          
