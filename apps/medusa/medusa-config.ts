@@ -7,14 +7,16 @@ module.exports = defineConfig({
     databaseUrl: process.env.DATABASE_URL,
     redisUrl: process.env.REDIS_URL,
     databaseDriverOptions: {
-      connection: {
-        ssl: false,
-      },
-      pool: {
-        min: 2,
-        max: 10,
-      },
-    },
+  connection: {
+    ssl: process.env.NODE_ENV === "production"
+      ? { rejectUnauthorized: false }
+      : false,
+  },
+  pool: {
+    min: 2,
+    max: 10,
+  },
+},
     http: {
       storeCors: process.env.STORE_CORS!,
       adminCors: process.env.ADMIN_CORS!,
