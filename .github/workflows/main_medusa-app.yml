@@ -33,7 +33,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Zip artifact for deployment
-        run: zip -r ../../release.zip ./* -x "*.git*"
+        run: zip -r ../release.zip ./* -x "*.git*"
         working-directory: ./deploy-medusa
 
       - name: Upload artifact for deployment job
