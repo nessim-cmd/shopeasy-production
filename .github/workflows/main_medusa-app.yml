@@ -1,11 +1,4 @@
-name: Build and deploy Node.js app to Azure Web App - medusa-app
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-jobs:
-  build:
+build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -27,46 +20,15 @@ jobs:
       - name: Build Medusa backend
         run: pnpm turbo run build --filter=@dtc/backend
 
-      - name: Install production deps only
-        run: npm ci --omit=dev
-        working-directory: ./apps/medusa
+      - name: Deploy production-only package
+        run: pnpm --filter=@dtc/backend deploy --prod ./deploy-medusa
 
       - name: Zip artifact for deployment
         run: zip -r ../../release.zip ./* -x "*.git*"
-        working-directory: ./apps/medusa
+        working-directory: ./deploy-medusa
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
           path: release.zip
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: node-app
-
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
-
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_93058E70FB8D4A6D987494FA7741D1FC }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_74CB121B4EEA4F66948C62CAFA54B242 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_E4A76FA7C76F4B76807C5322C1B7AF8C }}
-
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
-        id: deploy-to-webapp
-        with:
-          app-name: 'medusa-app'
-          slot-name: 'Production'
-          package: .
