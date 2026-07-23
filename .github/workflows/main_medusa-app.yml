@@ -29,6 +29,8 @@ jobs:
 
       - name: Deploy production-only package
         run: pnpm --filter=@dtc/backend deploy --prod --legacy ./deploy-medusa
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Zip artifact for deployment
         run: zip -r ../../release.zip ./* -x "*.git*"
