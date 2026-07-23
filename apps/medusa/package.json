@@ -53,10 +53,8 @@
     "vite": "^5.4.14",
     "yalc": "^1.0.0-pre.53"
   },
-  "engines": {
-    "node": ">=20"
-  },
-  "packageManager": "npm@11.16.0",
+  "engines": { "node": "22.x" },
+  "packageManager": "pnpm@11.10.0",
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
