@@ -103,7 +103,7 @@ services:
       dockerfile: Dockerfile
     container_name: shop_agent
     restart: unless-stopped
-    env_file: ./apps/agent/.env
+    env_file: ./apps/agent/.env.ollama
     environment:
       PROJECT_ROOT: /app
       DATABASE_URL: postgresql://shopuser:shoppassword@agent_db:5432/agent_db
