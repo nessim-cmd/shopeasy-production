@@ -1,0 +1,9 @@
+node_modules
+!.medusa/server/node_modules
+dist
+build
+.env
+.env.local
+*.log
+.git
+.turbo

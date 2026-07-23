@@ -14,10 +14,10 @@ if (!connectionString) {
   );
 }
 
-const isLocal = connectionString.includes("localhost") || connectionString.includes("127.0.0.1");
+const useSSL = process.env.DB_SSL === "true";
 const pool = new Pool({
   connectionString,
-  ssl: isLocal ? false : { rejectUnauthorized: false },
+  ssl: useSSL ? { rejectUnauthorized: false } : false,
 });
 
 async function queryDB(text: string, params: unknown[] = []) {

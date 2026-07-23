@@ -21,10 +21,10 @@ if (!connectionString) {
   throw new Error("Missing STORE_DATABASE_URL — set it in your .env before seeding.");
 }
 
-const pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
+const useSSL = process.env.DB_SSL === "true";
+const pool = new Pool({ connectionString, ssl: useSSL ? { rejectUnauthorized: false } : false });
 
 // ── Schema ────────────────────────────────────────────────────────
-// Real FK to neon_auth."user" is possible now that everything lives in one database.
 const SCHEMA_SQL = `
   DROP TABLE IF EXISTS support_tickets;
   DROP TABLE IF EXISTS orders;
@@ -42,7 +42,7 @@ const SCHEMA_SQL = `
 
   CREATE TABLE orders (
     id           TEXT PRIMARY KEY,
-    user_id      UUID NOT NULL REFERENCES user_profiles(user_id),
+    user_id      TEXT NOT NULL REFERENCES user_profiles(user_id),
     product      TEXT NOT NULL,
     status       TEXT NOT NULL CHECK (status IN ('processing','shipped','delivered','cancelled')),
     total        NUMERIC(12,2) NOT NULL,
@@ -81,7 +81,7 @@ async function seedUserProfiles(rows: Record<string, unknown>[]) {
          pin = EXCLUDED.pin,
          account_balance = EXCLUDED.account_balance`,
       [
-        row.id, // Medusa Customer ID
+        row.id,
         row.phone ?? null,
         row.address ?? null,
         row.creditCard ?? null,
@@ -111,6 +111,12 @@ async function seedOrders(rows: Record<string, unknown>[]) {
   console.log(`✓ orders            → ${rows.length} lignes insérées`);
 }
 
+// Returns true if the table exists in the current search_path/schema.
+async function tableExists(table: string): Promise<boolean> {
+  const { rows } = await pool.query(`SELECT to_regclass($1) AS reg`, [table]);
+  return rows[0].reg !== null;
+}
+
 // ── Main ──────────────────────────────────────────────────────────
 async function main() {
   console.log(`Seeding ${connectionString!.replace(/:[^:@]*@/, ":****@")}`);
@@ -120,7 +126,6 @@ async function main() {
 
   await pool.query(SCHEMA_SQL);
 
-  // No foreign key to neon_auth anymore, so any ID is accepted.
   await seedUserProfiles(users);
   await seedOrders(orders);
 
@@ -128,6 +133,10 @@ async function main() {
 
   console.log("\n── Verification ──────────────────────────");
   for (const table of ["user_profiles", "orders", "support_tickets", "products"]) {
+    if (!(await tableExists(table))) {
+      console.log(`   ${table.padEnd(16)}: (table not present in this database — skipped)`);
+      continue;
+    }
     const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM ${table}`);
     console.log(`   ${table.padEnd(16)}: ${rows[0].n} lignes`);
   }

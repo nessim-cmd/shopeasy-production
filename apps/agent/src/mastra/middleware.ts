@@ -121,10 +121,16 @@ export async function userIdentityMiddleware(c: any, next: any) {
   const authHeader = c.req.header("authorization");
   const requestContext = c.get("requestContext");
 
+  console.log(`[userIdentityMiddleware] path=${c.req.path} authHeader present: ${!!authHeader}`);
+
   if (authHeader && requestContext) {
     try {
       const pk = (process.env.MEDUSA_PUBLISHABLE_KEY || "").replace(/^["']|["']$/g, '');
-      const response = await fetch(`${process.env.MEDUSA_BACKEND_URL || "http://localhost:9000"}/store/customers/me`, {
+      const medusaUrl = process.env.MEDUSA_BACKEND_URL || "http://localhost:9000";
+      console.log(`[userIdentityMiddleware] Verifying against: ${medusaUrl}/store/customers/me`);
+      console.log(`[userIdentityMiddleware] Using publishable key: '${pk}'`);
+
+      const response = await fetch(`${medusaUrl}/store/customers/me`, {
         method: "GET",
         headers: {
           "Authorization": authHeader,
@@ -132,11 +138,19 @@ export async function userIdentityMiddleware(c: any, next: any) {
         }
       });
 
+      console.log(`[userIdentityMiddleware] Medusa response status: ${response.status}`);
+
       if (response.ok) {
         const data = await response.json();
         if (data.customer?.id) {
+          console.log(`[userIdentityMiddleware] ✅ Resolved customer ID: ${data.customer.id}`);
           requestContext.set(MASTRA_RESOURCE_ID_KEY, data.customer.id);
+        } else {
+          console.log(`[userIdentityMiddleware] ⚠️ Response OK but no customer.id in body:`, JSON.stringify(data));
         }
+      } else {
+        const errText = await response.text();
+        console.log(`[userIdentityMiddleware] ❌ Medusa rejected token:`, errText);
       }
     } catch (err) {
       console.error("[userIdentityMiddleware] Failed to verify Medusa session:", err);

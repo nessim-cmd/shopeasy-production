@@ -1,18 +1,20 @@
-FROM node:20-alpine
+FROM node:20-slim
 
 WORKDIR /app
 
-RUN npm install -g pnpm
+RUN npm install -g pnpm && \
+    pnpm config set fetch-timeout 600000 && \
+    pnpm config set fetch-retries 5 && \
+    pnpm config set fetch-retry-mintimeout 20000 && \
+    pnpm config set fetch-retry-maxtimeout 120000
 
 COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN pnpm run build
-
 EXPOSE 8000
 
-CMD ["pnpm", "run", "start"]
+CMD ["sh", "-c", "pnpm run build && pnpm run start"]

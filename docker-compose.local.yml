@@ -35,6 +35,18 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:alpine
+    container_name: shop_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   ollama:
     image: ollama/ollama:latest
     container_name: shop_ollama
@@ -64,8 +76,14 @@ services:
       dockerfile: Dockerfile
     container_name: shop_medusa
     restart: unless-stopped
+    working_dir: /workspace/apps/medusa
+    command: npm run dev
+    volumes:
+      - ./:/workspace
     environment:
+      NODE_ENV: development
       DATABASE_URL: postgresql://shopuser:shoppassword@store_db:5432/store_db
+      REDIS_URL: redis://redis:6379
       STORE_CORS: http://localhost:8000
       ADMIN_CORS: http://localhost:5173,http://localhost:9000
       AUTH_CORS: http://localhost:5173,http://localhost:9000,http://localhost:8000
@@ -75,6 +93,8 @@ services:
       - "9000:9000"
     depends_on:
       store_db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   agent:
@@ -92,7 +112,11 @@ services:
       OLLAMA_BASE_URL: http://ollama:11434/v1
       OLLAMA_MODEL: qwen3.5:9b
       MEDUSA_BACKEND_URL: http://medusa:9000
-    command: sh -c "pnpm run seed:all && pnpm run dev"
+      MEDUSA_PUBLISHABLE_KEY: pk_fa4bf7f75747a4ffb7bb221cb9623f3fae5f5f06d8fb0c74e2955952303d2a9b
+    working_dir: /workspace/apps/agent
+    command: sh -c "npm run seed:all && npm run dev"
+    volumes:
+      - ./:/workspace
     ports:
       - "4111:4111"
     depends_on:
@@ -111,9 +135,15 @@ services:
       dockerfile: Dockerfile
     container_name: shop_storefront
     restart: unless-stopped
+    working_dir: /workspace/apps/storefront
+    command: npm run dev
+    volumes:
+      - ./:/workspace
     env_file: ./apps/storefront/.env.local
     environment:
+      MEDUSA_BACKEND_URL: http://medusa:9000
       NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9000
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: pk_fa4bf7f75747a4ffb7bb221cb9623f3fae5f5f06d8fb0c74e2955952303d2a9b
       AGENT_URL: http://agent:4111
     ports:
       - "8000:8000"

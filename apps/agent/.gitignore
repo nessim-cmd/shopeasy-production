@@ -31,3 +31,5 @@ node_modules/
 *.db
 .vercel
 .env*
+
+.pnpm-store/v11

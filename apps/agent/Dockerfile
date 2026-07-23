@@ -11,15 +11,16 @@ WORKDIR /app
 
 COPY package.json .npmrc* ./
 
-RUN npm install -g pnpm && \
-    pnpm install
-
+RUN npm install -g pnpm@11.10.0 && \
+    pnpm config set dangerously-allow-all-builds true && \
+    pnpm config set fetch-timeout 600000 && \
+    pnpm config set fetch-retries 5 && \
+    pnpm config set fetch-retry-mintimeout 20000 && \
+    pnpm config set fetch-retry-maxtimeout 120000 && \
+    pnpm install --dangerously-allow-all-builds
 
 COPY . .
 
-
-# Production build — mastra dev is a watch/rebuild dev server, not meant
-# for a deployed container.
 RUN pnpm run build
 
 EXPOSE 4111

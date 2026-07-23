@@ -81,9 +81,15 @@ export const mastra = new Mastra({
   ],
     apiRoutes: [
       registerCopilotKit({
-        path: "/copilotkit",
-        resourceId: "anonymous",
-      }),
+  path: "/copilotkit",
+  resourceId: "anonymous",
+  setContext: async (c, requestContext) => {
+    const verifiedUserId = requestContext.get(MASTRA_RESOURCE_ID_KEY);
+    if (verifiedUserId && verifiedUserId !== "anonymous") {
+      requestContext.set(MASTRA_RESOURCE_ID_KEY, verifiedUserId);
+    }
+  },
+}),
 
       // ❌ Removed: registerApiRoute("/", ...) — this was overriding the root
       // path and hijacking it from Mastra Studio, which normally serves its

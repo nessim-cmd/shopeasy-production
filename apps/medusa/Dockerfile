@@ -1,18 +1,15 @@
-FROM node:20-alpine
-
-RUN apk update && apk add --no-cache python3 make g++
+FROM node:22-slim
 
 WORKDIR /app
 
-RUN npm install -g pnpm
+ENV MEDUSA_DISABLE_TELEMETRY=true
 
-COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile
-
+# Copy the pre-built medusa server from the host
 COPY . .
 
-RUN pnpm run build
+# Since node_modules and .medusa/server are already built on the host, we just set the workdir
+WORKDIR /app/.medusa/server
 
 EXPOSE 9000
 
-CMD ["sh", "-c", "npx medusa db:migrate && pnpm run start"]
+CMD ["npm", "run", "start"]

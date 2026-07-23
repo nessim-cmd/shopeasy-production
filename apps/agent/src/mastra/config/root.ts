@@ -16,7 +16,7 @@ function findRoot(startDir: string): string {
 }
 
 export const PROJECT_ROOT: string = isDocker
-  ? "/app"
+  ? "/workspace/apps/agent"
   : findRoot(process.cwd());
 
 console.log(

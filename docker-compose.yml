@@ -3,6 +3,7 @@ services:
     image: postgres:16-alpine
     container_name: shop_store_postgres
     restart: unless-stopped
+    command: ["postgres", "-c", "max_connections=200"]
     environment:
       POSTGRES_USER: shopuser
       POSTGRES_PASSWORD: shoppassword
@@ -35,39 +36,74 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:alpine
+    container_name: shop_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   medusa:
     build:
       context: ./apps/medusa
       dockerfile: Dockerfile
+      network: host
     container_name: shop_medusa
     restart: unless-stopped
+    working_dir: /workspace/apps/medusa
+    command: npm run dev
+    volumes:
+      - ./:/workspace
     environment:
+      NODE_ENV: development
       DATABASE_URL: postgresql://shopuser:shoppassword@store_db:5432/store_db
-      STORE_CORS: http://localhost:8000
-      ADMIN_CORS: http://localhost:5173,http://localhost:9000
-      AUTH_CORS: http://localhost:5173,http://localhost:9000,http://localhost:8000
+      REDIS_URL: redis://redis:6379
+      PORT: 9000
+      STORE_CORS: http://localhost:8000,http://localhost:5173,http://localhost:4111,http://agent:4111,http://127.0.0.1:4111
+      ADMIN_CORS: http://localhost:8000,http://localhost:9000,http://localhost:5173,http://localhost:4111,http://agent:4111,http://127.0.0.1:4111
+      AUTH_CORS: http://localhost:8000,http://localhost:9000,http://localhost:5173,http://localhost:4111,http://agent:4111,http://127.0.0.1:4111
       JWT_SECRET: supersecret
       COOKIE_SECRET: supersecret
+      MEDUSA_ADMIN_ONBOARDING_TYPE: default
+      MEDUSA_ADMIN_ONBOARDING_NEXTJS_DIRECTORY: ../../apps/storefront
     ports:
       - "9000:9000"
     depends_on:
       store_db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:9000/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 10s
+      retries: 100
+      start_period: 600s
 
   agent:
     build:
       context: ./apps/agent
       dockerfile: Dockerfile
+      network: host
     container_name: shop_agent
     restart: unless-stopped
-    env_file: ./apps/agent/.env
+    env_file: ./apps/agent/.env.openrouter
     environment:
       PROJECT_ROOT: /app
       DATABASE_URL: postgresql://shopuser:shoppassword@agent_db:5432/agent_db
       STORE_DATABASE_URL: postgresql://shopuser:shoppassword@store_db:5432/store_db
       LLM_PROVIDER: openrouter
       MEDUSA_BACKEND_URL: http://medusa:9000
-    command: sh -c "pnpm run seed:all && pnpm run dev"
+      MEDUSA_PUBLISHABLE_KEY: pk_fa4bf7f75747a4ffb7bb221cb9623f3fae5f5f06d8fb0c74e2955952303d2a9b
+    working_dir: /workspace/apps/agent
+    command: sh -c "npm run seed:all && npm run dev"
+    volumes:
+      - ./:/workspace
     ports:
       - "4111:4111"
     depends_on:
@@ -76,23 +112,29 @@ services:
       store_db:
         condition: service_healthy
       medusa:
-        condition: service_started
+        condition: service_healthy
 
   storefront:
     build:
       context: ./apps/storefront
       dockerfile: Dockerfile
+      network: host
     container_name: shop_storefront
     restart: unless-stopped
+    working_dir: /workspace/apps/storefront
+    command: npm run dev
+    volumes:
+      - ./:/workspace
     env_file: ./apps/storefront/.env.local
     environment:
-      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9000
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://medusa:9000
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: pk_fa4bf7f75747a4ffb7bb221cb9623f3fae5f5f06d8fb0c74e2955952303d2a9b
       AGENT_URL: http://agent:4111
     ports:
       - "8000:8000"
     depends_on:
       medusa:
-        condition: service_started
+        condition: service_healthy
       agent:
         condition: service_started
 
