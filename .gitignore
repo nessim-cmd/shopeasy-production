@@ -3,3 +3,5 @@ dist/
 .env
 node_modules/
 medusa_build.log
+.pnpm-store/
+.turbo/
