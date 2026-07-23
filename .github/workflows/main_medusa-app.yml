@@ -28,7 +28,7 @@ jobs:
         run: pnpm turbo run build --filter=@dtc/backend
 
       - name: Deploy production-only package
-        run: pnpm --filter=@dtc/backend deploy --prod ./deploy-medusa
+        run: pnpm --filter=@dtc/backend deploy --prod --legacy ./deploy-medusa
 
       - name: Zip artifact for deployment
         run: zip -r ../../release.zip ./* -x "*.git*"
