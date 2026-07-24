@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: medusa-backend
+    env: node
+    region: frankfurt
+    plan: starter
+
+    # 1. Install monorepo deps with pnpm
+    # 2. Build Medusa → compiles to apps/medusa/.medusa/server/
+    # 3. Run npm install inside the compiled output so all transitive deps
+    #    (like @medusajs/admin-bundler) are installed in a flat npm structure.
+    #    This avoids pnpm's strict non-flat layout which breaks resolution.
+    buildCommand: "npm install -g pnpm@11.10.0 && pnpm install --frozen-lockfile && pnpm turbo run build --filter=@dtc/backend && cd apps/medusa/.medusa/server && npm install --legacy-peer-deps"
+
+    # Start directly from the compiled server with its own node_modules
+    startCommand: "cd apps/medusa/.medusa/server && npm start"
+
+    envVars:
+      - key: NODE_VERSION
+        value: 22.13.0
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # Secrets — set these in the Render dashboard, not here
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: COOKIE_SECRET
+        sync: false
+      - key: STORE_CORS
+        sync: false
+      - key: ADMIN_CORS
+        sync: false
+      - key: AUTH_CORS
+        sync: false
