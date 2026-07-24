@@ -28,34 +28,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Build Medusa — outputs compiled JS to apps/medusa/.medusa/server/
+      # Build Medusa — outputs compiled server to apps/medusa/.medusa/server/
       - name: Build Medusa backend
         run: pnpm turbo run build --filter=@dtc/backend
         env:
           NODE_OPTIONS: --max-old-space-size=6144
 
-      # Install production-only node_modules inside the compiled build output
-      - name: Install production dependencies in build output
-        run: npm install --omit=dev --legacy-peer-deps
-        working-directory: ./apps/medusa/.medusa/server
+      # Tell Azure's Oryx npm to use legacy-peer-deps so it can resolve
+      # the @medusajs/ui version conflict during its own npm install
+      - name: Add .npmrc for Azure Oryx build
+        run: echo "legacy-peer-deps=true" > apps/medusa/.medusa/server/.npmrc
 
-      # Patch start script to call cli.js directly via node, bypassing the
-      # broken .bin/medusa symlink that zip dereferences into a copy.
-      # (confirmed: @medusajs/cli/cli.js exists from earlier error logs)
-      - name: Patch start script to bypass .bin symlink
-        run: |
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            pkg.scripts.start = 'node node_modules/@medusajs/cli/cli.js start';
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
-            console.log('Patched start script:', pkg.scripts.start);
-          "
-        working-directory: ./apps/medusa/.medusa/server
-
-      # Zip with -y to preserve symlinks (prevents zip from dereferencing .bin/* symlinks)
+      # Zip the compiled server WITHOUT node_modules.
+      # Azure's Oryx detects package.json and runs npm install itself —
+      # this creates proper .bin/ symlinks natively, avoiding all symlink issues.
       - name: Zip artifact for deployment
-        run: zip -ry ../../../../release.zip .
+        run: zip -r ../../../../release.zip . -x "node_modules/*" -x ".git/*"
         working-directory: ./apps/medusa/.medusa/server
 
       - name: Upload artifact for deployment job
