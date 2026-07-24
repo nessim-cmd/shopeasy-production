@@ -36,7 +36,7 @@ jobs:
 
       # Install production-only node_modules inside the compiled build output
       - name: Install production dependencies in build output
-        run: npm install --production --legacy-peer-deps
+        run: npm install --omit=dev
         working-directory: ./apps/medusa/.medusa/server
 
       # Zip the compiled server directory — this is what Azure will run
