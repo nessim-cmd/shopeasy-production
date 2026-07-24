@@ -39,9 +39,23 @@ jobs:
         run: npm install --omit=dev --legacy-peer-deps
         working-directory: ./apps/medusa/.medusa/server
 
-      # Zip the compiled server directory — this is what Azure will run
+      # Patch start script to call cli.js directly via node, bypassing the
+      # broken .bin/medusa symlink that zip dereferences into a copy.
+      # (confirmed: @medusajs/cli/cli.js exists from earlier error logs)
+      - name: Patch start script to bypass .bin symlink
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.scripts.start = 'node node_modules/@medusajs/cli/cli.js start';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+            console.log('Patched start script:', pkg.scripts.start);
+          "
+        working-directory: ./apps/medusa/.medusa/server
+
+      # Zip with -y to preserve symlinks (prevents zip from dereferencing .bin/* symlinks)
       - name: Zip artifact for deployment
-        run: zip -r ../../../../release.zip .
+        run: zip -ry ../../../../release.zip .
         working-directory: ./apps/medusa/.medusa/server
 
       - name: Upload artifact for deployment job
