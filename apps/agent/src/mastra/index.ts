@@ -55,6 +55,8 @@ export const mastra = new Mastra({
   },
   logger: customLogger,
   server: {
+  port: Number(process.env.PORT) || 4111,
+  host: "0.0.0.0",
   apiPrefix: "/api",
   cors: {
     origin: "*", // or restrict to ["https://store-agent-five.vercel.app", "http://localhost:3000"] once confirmed working
