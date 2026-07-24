@@ -141,7 +141,7 @@ async function main() {
     console.log(`   ${table.padEnd(16)}: ${rows[0].n} lignes`);
   }
 
-  console.log(`\n✅ neondb seeded successfully`);
+  
   await pool.end();
 }
 

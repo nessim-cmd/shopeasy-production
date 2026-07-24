@@ -1,3 +1,4 @@
+name: agent-with-ollama
 services:
   agent_db:
     image: pgvector/pgvector:pg16
@@ -61,7 +62,7 @@ services:
   agent:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.local
     container_name: agent_app
     restart: unless-stopped
     env_file: .env.ollama

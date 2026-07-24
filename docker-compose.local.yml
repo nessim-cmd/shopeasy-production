@@ -1,3 +1,4 @@
+name: shopeasy-ollama
 services:
   store_db:
     image: postgres:16-alpine
@@ -77,7 +78,7 @@ services:
     container_name: shop_medusa
     restart: unless-stopped
     working_dir: /workspace/apps/medusa
-    command: npm run dev
+    command: sh -c "npx medusa db:migrate && npm run dev"
     volumes:
       - ./:/workspace
     environment:

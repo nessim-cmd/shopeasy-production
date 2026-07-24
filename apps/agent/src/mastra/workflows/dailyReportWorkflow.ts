@@ -1,22 +1,11 @@
-/**
- * dailyReportWorkflow.ts
- * Runs every day at 8:00 AM via Mastra native cron scheduling.
- *
- * Steps:
- * 1. gatherStatsStep — queries Neon DB for open ticket count
- * 2. sendReportStep  — emails summary report to store admin (GMAIL_USER)
- *
- * Visible in Studio: http://localhost:4111 → Schedules tab
- * Can be paused, resumed, or triggered manually from Studio.
- */
 import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { z } from "zod";
 import nodemailer from "nodemailer";
-import pg from "pg";
+import { getBusinessDB } from "../data/db.js";
 
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const db = getBusinessDB();
 
-// ── Step 1: Gather stats from Neon DB ────────────────────────────
+// ── Step 1: Gather stats from store_db ────────────────────────────
 const gatherStatsStep = createStep({
   id: "gather-stats",
   inputSchema: z.object({}),
@@ -26,15 +15,15 @@ const gatherStatsStep = createStep({
     summary: z.string(),
   }),
   execute: async () => {
-    const openResult = await pool.query(
+    const openResult = await db.query(
       `SELECT COUNT(*) FROM support_tickets WHERE status = 'open'`,
     );
-    const highResult = await pool.query(
+    const highResult = await db.query(
       `SELECT COUNT(*) FROM support_tickets WHERE status = 'open' AND priority = 'high'`,
     );
 
-    const openTickets = parseInt(openResult.rows[0].count);
-    const highPriority = parseInt(highResult.rows[0].count);
+    const openTickets = parseInt(openResult[0].count);
+    const highPriority = parseInt(highResult[0].count);
 
     const today = new Date().toDateString();
     const summary = [
@@ -71,7 +60,7 @@ const sendReportStep = createStep({
 
       await transporter.sendMail({
         from: `ShopEasy Agent <${process.env.GMAIL_USER}>`,
-        to: process.env.GMAIL_USER, // sends to yourself (admin)
+        to: process.env.GMAIL_USER,
         subject: `ShopEasy Daily Report — ${new Date().toDateString()}`,
         text: inputData.summary,
       });
@@ -90,10 +79,8 @@ export const dailyReportWorkflow = createWorkflow({
   id: "daily-report",
   inputSchema: z.object({}),
   outputSchema: z.object({ sent: z.boolean() }),
-
-  // ── Cron: every day at 8:00 AM ──
   schedule: {
-    cron: "0 8 * * *", // minute hour day month weekday
+    cron: "0 8 * * *",
   },
 })
   .then(gatherStatsStep)

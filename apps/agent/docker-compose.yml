@@ -1,3 +1,4 @@
+name: agent-with-openrouter
 services:
   agent_db:
     image: pgvector/pgvector:pg16
@@ -38,7 +39,7 @@ services:
   agent:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.local
     container_name: agent_app
     restart: unless-stopped
     env_file: .env.openrouter
@@ -47,6 +48,7 @@ services:
       DATABASE_URL: postgresql://shopuser:shoppassword@agent_db:5432/agent_db
       STORE_DATABASE_URL: postgresql://shopuser:shoppassword@store_db:5432/store_db
       LLM_PROVIDER: openrouter
+      CI: true
     command: sh -c "pnpm run seed:all && pnpm run dev"
     ports:
       - "4111:4111"
