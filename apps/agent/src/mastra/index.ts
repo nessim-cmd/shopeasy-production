@@ -16,6 +16,7 @@ import { registerApiRoute } from "@mastra/core/server";
 import { readFileSync } from "fs";
 import path from "path";
 import { PostgresStore } from "@mastra/pg";
+import { VercelDeployer } from "@mastra/deployer-vercel";
 
 import { PROJECT_ROOT } from "./config/root.js";
 import { getBusinessDB } from "./data/db.js";
@@ -54,6 +55,11 @@ export const mastra = new Mastra({
     externals: true,
   },
   logger: customLogger,
+  deployer: new VercelDeployer({
+    maxDuration: 60,      // Hobby plan caps at 60s regardless of a higher value here
+    memory: 1024,
+    // regions: ['cdg1'], // optional — pick something close to Neon's eu-central-1 region
+  }),
   server: {
   port: Number(process.env.PORT) || 4111,
   host: "0.0.0.0",
