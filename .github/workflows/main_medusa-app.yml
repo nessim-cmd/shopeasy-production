@@ -1,34 +1,49 @@
 name: Build and deploy Node.js app to Azure Web App - medusa-app
+
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: pnpm/action-setup@v4
         with:
           version: 11.10.0
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22.x'
           cache: 'pnpm'
-      - name: Install dependencies (monorepo root)
+
+      # Install all monorepo dependencies
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # Build Medusa — outputs compiled JS to apps/medusa/.medusa/server/
       - name: Build Medusa backend
         run: pnpm turbo run build --filter=@dtc/backend
-      - name: Deploy production-only package
-        run: pnpm --filter=@dtc/backend deploy --prod --legacy ./deploy-medusa
         env:
           NODE_OPTIONS: --max-old-space-size=6144
+
+      # Install production-only node_modules inside the compiled build output
+      - name: Install production dependencies in build output
+        run: npm install --production --legacy-peer-deps
+        working-directory: ./apps/medusa/.medusa/server
+
+      # Zip the compiled server directory — this is what Azure will run
       - name: Zip artifact for deployment
-        run: zip -r ../release.zip ./* -x "*.git*"
-        working-directory: ./deploy-medusa
+        run: zip -r ../../../../release.zip .
+        working-directory: ./apps/medusa/.medusa/server
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
@@ -40,13 +55,16 @@ jobs:
     needs: build
     permissions:
       contents: read
+
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: node-app
+
       - name: Unzip artifact for deployment
         run: unzip release.zip
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
