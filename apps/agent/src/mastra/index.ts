@@ -10,6 +10,7 @@ process.on("unhandledRejection", (reason) => {
 
 import "./config/patchEnv.js";
 import "dotenv/config";
+import "openai";
 import { Mastra } from "@mastra/core/mastra";
 import { PinoLogger } from "@mastra/loggers";
 import { registerApiRoute } from "@mastra/core/server";
