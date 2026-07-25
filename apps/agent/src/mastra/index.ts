@@ -53,8 +53,8 @@ export const mastra = new Mastra({
     connectionString: process.env.DATABASE_URL,
   }),
   bundler: {
-    externals: ["@copilotkit/runtime"],
-  },
+  externals: ["@copilotkit/runtime", "@medusajs/js-sdk"],
+},
   logger: customLogger,
   deployer: new VercelDeployer({
     maxDuration: 60,      // Hobby plan caps at 60s regardless of a higher value here
