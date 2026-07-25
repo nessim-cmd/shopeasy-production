@@ -78,7 +78,7 @@ services:
     container_name: shop_medusa
     restart: unless-stopped
     working_dir: /workspace/apps/medusa
-    command: sh -c "npx medusa db:migrate && npm run dev"
+    command: sh -c "npx medusa db:migrate && (npx medusa user -e admin@example.com -p supersecret123 || true) && npm run dev"
     volumes:
       - ./:/workspace
     environment:
