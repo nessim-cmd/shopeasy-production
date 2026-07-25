@@ -27,8 +27,8 @@
   "license": "ISC",
   "type": "module",
   "engines": {
-    "node": ">=22.13.0"
-  },
+  "node": "22.x"
+},
   "dependencies": {
     "@ag-ui/client": "^0.0.57",
     "@ag-ui/core": "^0.0.57",
