@@ -73,6 +73,7 @@ services:
       LLM_PROVIDER: ollama
       OLLAMA_BASE_URL: http://ollama:11434/v1
       OLLAMA_MODEL: qwen3.5:9b
+      CI: true
     command: sh -c "pnpm run seed:all && pnpm run dev"
     ports:
       - "4111:4111"
