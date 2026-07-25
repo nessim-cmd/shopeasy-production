@@ -52,7 +52,7 @@ export const mastra = new Mastra({
     connectionString: process.env.DATABASE_URL,
   }),
   bundler: {
-    externals: ["@copilotkit/runtime", "openai"],
+    externals: ["@copilotkit/runtime"],
   },
   logger: customLogger,
   deployer: new VercelDeployer({
