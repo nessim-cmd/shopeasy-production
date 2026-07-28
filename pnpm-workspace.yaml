@@ -11,3 +11,5 @@ allowBuilds:
   protobufjs: true
   sharp: true
   unrs-resolver: true
+patchedDependencies:
+  '@medusajs/js-sdk@2.17.0': patches/@medusajs__js-sdk@2.17.0.patch

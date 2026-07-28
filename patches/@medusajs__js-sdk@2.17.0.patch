@@ -1,0 +1,12 @@
+diff --git a/package.json b/package.json
+index afd8de8543ebf28c21249c64fcff2feab12aab21..e0a49fb815990fb7075d82693036bb2717ab3ec6 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "@medusajs/js-sdk",
+   "version": "2.17.0",
+   "description": "SDK for the Medusa API",
++  "type": "module",
+   "main": "dist/index.js",
+   "module": "dist/esm/index.js",
+   "types": "dist/index.d.ts",
