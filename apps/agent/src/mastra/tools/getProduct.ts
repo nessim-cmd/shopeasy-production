@@ -1,10 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { createRequire } from "module";
 import type { HttpTypes } from "@medusajs/types";
-
-const require = createRequire(import.meta.url);
-const MedusaPkg = require("@medusajs/js-sdk");
+import MedusaPkg from "@medusajs/js-sdk";
 
 // Handle Node ESM default export quirk
 

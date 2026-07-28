@@ -1,6 +1,4 @@
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const MedusaPkg = require("@medusajs/js-sdk");
+import MedusaPkg from "@medusajs/js-sdk";
 
 // Handle Node ESM default export quirk
 const Medusa = (MedusaPkg as any).default || MedusaPkg;
