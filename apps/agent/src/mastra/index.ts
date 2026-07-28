@@ -53,7 +53,7 @@ export const mastra = new Mastra({
     connectionString: process.env.DATABASE_URL,
   }),
   bundler: {
-  externals: ["@copilotkit/runtime", "@medusajs/js-sdk"],
+  externals: ["@copilotkit/runtime"],
 },
   logger: customLogger,
   deployer: new VercelDeployer({
