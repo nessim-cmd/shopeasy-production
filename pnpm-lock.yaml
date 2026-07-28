@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@medusajs/js-sdk@2.17.0': cabf02ad16a606051065ee747f04ca14b13c9d2f62a45b6d035f6b54d703d2f8
+
 importers:
 
   .:
@@ -70,7 +73,7 @@ importers:
         version: 1.15.1(@mastra/core@1.50.1(@bufbuild/protobuf@2.12.1)(@cfworker/json-schema@4.1.1)(@grpc/grpc-js@1.14.4)(ai@6.0.220(zod@4.4.3))(express@5.2.1)(rxjs@7.8.1)(zod@4.4.3))
       '@medusajs/js-sdk':
         specifier: 2.17.0
-        version: 2.17.0
+        version: 2.17.0(patch_hash=cabf02ad16a606051065ee747f04ca14b13c9d2f62a45b6d035f6b54d703d2f8)
       '@medusajs/types':
         specifier: 2.17.0
         version: 2.17.0(ioredis@5.11.1)(vite@5.4.21(@types/node@25.9.4)(terser@5.48.0))
@@ -235,7 +238,7 @@ importers:
         version: 2.17.0(react@19.0.5)
       '@medusajs/js-sdk':
         specifier: 2.17.0
-        version: 2.17.0
+        version: 2.17.0(patch_hash=cabf02ad16a606051065ee747f04ca14b13c9d2f62a45b6d035f6b54d703d2f8)
       '@medusajs/ui-preset':
         specifier: 2.17.0
         version: 2.17.0(tailwindcss@3.4.19(tsx@4.23.0)(yaml@2.9.0))
@@ -14526,7 +14529,7 @@ snapshots:
       '@hookform/resolvers': 3.4.2(react-hook-form@7.49.1(react@18.3.1))
       '@medusajs/admin-shared': 2.17.0
       '@medusajs/icons': 2.17.0(react@18.3.1)
-      '@medusajs/js-sdk': 2.17.0
+      '@medusajs/js-sdk': 2.17.0(patch_hash=cabf02ad16a606051065ee747f04ca14b13c9d2f62a45b6d035f6b54d703d2f8)
       '@medusajs/ui': 4.1.17(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
       '@radix-ui/react-dialog': 1.1.4(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-dismissable-layer': 1.1.4(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -14597,7 +14600,7 @@ snapshots:
       '@babel/runtime': 7.29.7
       '@hookform/resolvers': 3.4.2(react-hook-form@7.49.1(react@18.3.1))
       '@medusajs/framework': 2.17.0(@medusajs/cli@2.17.0(@types/node@20.19.43)(libsql@0.5.29))(@types/node@20.19.43)(ioredis@5.11.1)(libsql@0.5.29)(vite@5.4.21(@types/node@20.19.43)(terser@5.48.0))(zod@4.2.0)
-      '@medusajs/js-sdk': 2.17.0
+      '@medusajs/js-sdk': 2.17.0(patch_hash=cabf02ad16a606051065ee747f04ca14b13c9d2f62a45b6d035f6b54d703d2f8)
       '@tanstack/react-query': 5.64.2(react@18.3.1)
       '@uiw/react-json-view': 2.0.0-alpha.43(@babel/runtime@7.29.7)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       date-fns: 3.6.0
@@ -14723,7 +14726,7 @@ snapshots:
     dependencies:
       '@medusajs/framework': 2.17.0(@medusajs/cli@2.17.0(@types/node@20.19.43)(libsql@0.5.29))(@types/node@20.19.43)(ioredis@5.11.1)(libsql@0.5.29)(vite@5.4.21(@types/node@20.19.43)(terser@5.48.0))(zod@4.2.0)
 
-  '@medusajs/js-sdk@2.17.0':
+  '@medusajs/js-sdk@2.17.0(patch_hash=cabf02ad16a606051065ee747f04ca14b13c9d2f62a45b6d035f6b54d703d2f8)':
     dependencies:
       fetch-event-stream: 0.1.6
       qs: 6.15.3

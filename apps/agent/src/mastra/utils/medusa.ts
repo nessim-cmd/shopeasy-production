@@ -1,15 +1,20 @@
 import { createRequire } from "module";
 
-// Trick Vercel's NFT tracer to include the dependency
-if (false) {
-  require("@medusajs/js-sdk");
-}
-
 const req = createRequire(import.meta.url);
 const MedusaPkg = req("@medusajs/js-sdk");
 
 // Handle Node ESM default export quirk
 const Medusa = (MedusaPkg as any).default || MedusaPkg;
+
+// Trick Vercel's NFT tracer into including the dependency.
+// This function is never called, so it doesn't crash at runtime,
+// but since it's exported, esbuild won't eliminate it.
+declare const require: any;
+export function _vercelTraceMedusa() {
+  try {
+    require("@medusajs/js-sdk");
+  } catch (e) {}
+}
 
 export const medusa = new Medusa({
   baseUrl: process.env.MEDUSA_BACKEND_URL || "http://localhost:9000",
